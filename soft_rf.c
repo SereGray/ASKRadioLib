@@ -4,11 +4,11 @@ const uint32_t speed_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
 
 const uint8_t start_symbol = 0x38;
 
-bit_time init_timings_(uint32_t speed, uint32_t timer_freq)
+bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
 {
 	bit_time bt;
 	// длительность 1сек(10^9 мкс) бита 1/скорость связи
-	bt.bit_time_ = 1000000000.0 / speed;
+	bt.bit_time_ = 1000000000.0 / changed_bitrate;
 	// длительность 1сек(10^9 мкс) тика 1/частота
 	bt.one_timer_tick_time_ = 1000000000.0 / timer_freq;
 	bt.TIM_ticks_per_bit_ = round(bt.bit_time_ / \

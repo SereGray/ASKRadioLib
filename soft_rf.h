@@ -64,6 +64,9 @@
 
 #define BIT_PER_SECOND_TRANSFER_SPEED 4 // speed rate in bts speed_[] bellow
 
+// uncomment this if use radio receiver module
+//#define RECEIVER 
+
  //const uint16_t max_sequence_iterator_ = 24; // 12 бит Х 2
 #define MAX_SEQUENCE_ITERATOR 24
 //const uint8_t max_data_length_ = 27; // 27 byte data + 1 byte data lenght + 2 byte CRC
@@ -84,7 +87,7 @@ typedef struct
      uint16_t start_bit_ticks_max_;
  }bit_time;
 
-extern const uint32_t speed_[];
+extern const uint32_t speed_[]; // bitrate
 
 extern const uint8_t start_symbol; // 0x38 0b111000  12bit symbol <--- 2x
 
@@ -115,9 +118,20 @@ typedef struct
 //  ( длительность выского уровня и длительность низкого уровня) к
 // последовательности данных итератор указывает на позицию вставки следующего значения
 
+//PUBLIC FUNCTIONS
+// uint8_t may cast to any type
+void send(uint8_t * msg);
+
+#ifdef RECEIVER
+    void on_receive(uint8_t * msg, uint16_t len); // after receive MUST BE IMPLEMENTED BY USER
+#endif // RECEIVER
+
 uint8_t init_rf(); // init radio 
-bit_time init_timings_(uint32_t speed, uint32_t timer_freq);
+
+// PRIVATE FUNCTIONS ( will be send to .c file)
+bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq);
 data_full_msg init_data_struct();
+
 void Add_converted_signal_to_data(uint16_t *buffer, timer_receive_sequence *sequence, data_full_msg* data); // buffer - place where are dma send data_, sequence -... this function
 uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_sequence* sequence, data_full_msg* data);
 uint8_t Convert_sequence_find_data_length(bit_time* bt, timer_receive_sequence* timers_sequence, data_full_msg* data);
