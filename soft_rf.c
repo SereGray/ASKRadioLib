@@ -1,8 +1,12 @@
 #include"soft_rf.h"
 
-const uint32_t speed_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
+const uint32_t bitrate_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
 
 const uint8_t start_symbol = 0x38;
+
+timer_receive_sequence timer_buff; // buffer for timer
+bit_time bt; // timings
+
 
 bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
 {
@@ -48,24 +52,26 @@ data_full_msg init_data_struct()
 // выполняется во время прерывания по запросу ПДП (DMA)
 uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_sequence *sequence, data_full_msg * data)
 {
-	if (sequence->sequence_iterator_ == MAX_SEQUENCE_ITERATOR) return 1;
+	if (sequence->sequence_iterator_ == MAX_TIMER_BUFFER_LENGTH) return 1;
 	sequence->TIM_ticks_sequence_[sequence->sequence_iterator_] = buffer[0];
 	++sequence->sequence_iterator_;
 	sequence->TIM_ticks_sequence_[sequence->sequence_iterator_] = buffer[1];
 	++sequence->sequence_iterator_;
-	Convert_sequence_find_data_length(bt, sequence, data);
-	if (sequence->sequence_iterator_ == MAX_SEQUENCE_ITERATOR) sequence->sequence_iterator_ = 0; // обнуление последовательности
+	Convert_sequence(bt, sequence, data);
+	if (sequence->sequence_iterator_ == MAX_TIMER_BUFFER_LENGTH) sequence->sequence_iterator_ = 0; // обнуление последовательности
 	// принимаю длину сообщения, устанавливаю sequence_iterator в 0, принимаую сообщение
 	// , при достижении sequence iterator длины сообщения снимаю флаг start_bit_ вызываю прерывание?!?!?
 	return 0;
 }
 
+
 // поиск начала сообщение и его расшифровка
 // разворот битов из LSB в MSB
-uint8_t Convert_sequence_find_data_length(bit_time* bt, timer_receive_sequence* tim_seq, data_full_msg* data )
+uint8_t Convert_sequence(bit_time* bt, timer_receive_sequence* tim_seq, data_full_msg* data )
 {
 	// предпологается что таймер принял 6 + 6 бит
 	// TODO: проверка на шум если длительность много меньше длительности бита - отсекаем
+	// TODO: remove find data length
 	uint8_t start_ = 0;
 	uint16_t buffer_ = { 0, };  // буфер для заполнения 6 битными значениями
 	uint8_t buffer_iterator_ = 0;
@@ -133,5 +139,19 @@ uint8_t Convert_4to6(uint8_t data_4bit_in)
 	return symbols[data_4bit_in];
 }
 
+void init_rf() {
+	const uint32_t timer_freq = TIMER_CLOCK_FREQ;
+	bt = init_timings_(bitrate_[BIT_PER_SECOND_TRANSFER_SPEED], timer_freq);
+}
 
-
+void On_timer_count_interrupt() {
+	static uint16_t transmitted_count = 0;
+	// copying the input buffer to local copy, the input buffer can be overwritten
+	timer_receive_sequence local_buffer;
+	local_buffer = timer_buff;
+	//TODO: find start sequence
+	// if find start sequence reading data lenght
+	// TODO: split data and decode after start symbol
+	
+	//TODO: check transmitted_count decrement
+}
