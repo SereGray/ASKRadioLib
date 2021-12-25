@@ -70,6 +70,7 @@
 
 #include<math.h>
 #include<inttypes.h>
+#include<malloc.h>
 
 #define BIT_PER_SECOND_TRANSFER_SPEED 4 // speed rate in bts speed_[] bellow
 
@@ -144,7 +145,7 @@ data_full_msg init_data_struct();
 void On_timer_count_interrupt(); 
 void Add_converted_signal_to_data(uint16_t *buffer, timer_receive_sequence *sequence, data_full_msg* data); // buffer - place where are dma send data_, sequence -... this function
 uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_sequence* sequence, data_full_msg* data);
-uint8_t Convert_sequence(bit_time* bt, timer_receive_sequence* timers_sequence, data_full_msg* data);
+
 
 uint8_t Convert_6to4(uint8_t data_6bit_in); // return converted 4 bit , just "inline" it
 uint8_t Convert_4to6(uint8_t data_4bit_in); // return converted 6 bit ,
