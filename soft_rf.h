@@ -25,7 +25,7 @@
  * 
  * hardware part
  * one TIM for capture signals
- * one TIM for counting the number of captured signals - when the threshold value is reached, the message search function called (by interrupt)
+ * one TIM for counting the number of captured signals - when the threshold value (MAX_TIMER_BUFFER_LENGTH) is reached, the message search function called (by interrupt) 
  * DMA - to move values from capture/compare reg to timer_buff 
  * 
  * 
