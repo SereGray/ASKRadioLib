@@ -7,8 +7,9 @@ typedef struct {
 
 converted_sequence Convert_sequence(bit_time* bt, timer_receive_sequence* timers_sequence);
 converted_sequence Init_converted_sequence(uint8_t len);
-void Read_data_lenght_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer);
-void Append_data_from_local_buffer(data_full_msg*  message, timer_receive_sequence* local_buffer);
+void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading); 
+void Remove_second_start_sequence(timer_receive_sequence* local_buffer);
+void Next_read_data_from_local_buffer(data_full_msg*  message, timer_receive_sequence* local_buffer);
 
 const uint32_t bitrate_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
 
@@ -19,7 +20,8 @@ static uint16_t transmitted_count = 0;
 // "1" when transmition started 
 static uint8_t started = 0;
 
-timer_receive_sequence timer_buff; // buffer for timer
+timer_receive_sequence input_timer_buff_one; // buffer for timer
+timer_receive_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
 bit_time bt; // timings
 data_full_msg message;
 
@@ -38,7 +40,7 @@ bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
 	bt.delta_timer_ticks_per_bit_ = bt.TIM_ticks_per_bit_ / 50;
 	bt.TIM_ticks_per_bit_min_ = bt.TIM_ticks_per_bit_ - \
 		bt.delta_timer_ticks_per_bit_;
-	bt.timer_ticks_per_bit_max_ = bt.TIM_ticks_per_bit_ + \
+	bt.TIM_ticks_per_bit_max_ = bt.TIM_ticks_per_bit_ + \
 		bt.delta_timer_ticks_per_bit_;
 	bt.start_bit_ticks_ = 3 * bt.TIM_ticks_per_bit_;
 	bt.start_bit_ticks_min_ = bt.start_bit_ticks_ - \
@@ -75,7 +77,10 @@ uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_seq
 	++sequence->sequence_iterator_;
 	Convert_sequence(bt, sequence, data);
 	if (sequence->sequence_iterator_ == MAX_TIMER_BUFFER_LENGTH) sequence->sequence_iterator_ = 0; // reset sequence
+	
+																								  
 	// get message lenght, set sequence_iterator in 0, receiving message
+	
 	// , when the message length of sequence iterator is reached  - set start_bit_ flag false and start interrupt?!?!?
 	return 0;
 }
@@ -83,21 +88,25 @@ uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_seq
 
 // Decoding
 // разворот битов из LSB в MSB
+
+// sequence can start with "0" and "1"
 converted_sequence Convert_sequence(bit_time* bt, timer_receive_sequence* tim_seq)
 {
 	converted_sequence res;
 	// предпологается что таймер принял 6 + 6 бит
 	// TODO: проверка на шум если длительность много меньше длительности бита - отсекаем
 	uint8_t start_ = tim_seq->sequence_iterator_;
-	uint16_t buffer_ = { 0, };  // буфер для заполнения 6 битными значениями
+	uint16_t buffer_ = { 0 };  // буфер для заполнения 6 битными значениями
 	uint8_t buffer_iterator_ = 0;
 	uint8_t word_buffer_ = 0; // заполняется по 4 бита, для учета нужен итератор
 	uint8_t halfword_iterator_ = 0;
-	uint8_t count_1 = 0, count_0 = 0;
+	uint8_t count_1 = 0, count_0 = 0, word_count_ = 0;
 	if (start_ == MAX_TIMER_BUFFER_LENGTH)return Init_converted_sequence(0);
 	// поиск
 	for (uint8_t i = start_; i < MAX_TIMER_BUFFER_LENGTH; i = i + 2) {//TODO: что если sequence_iterator нечетный
 
+		TODO: узнать что идет первым 0 или 1
+		
 		// разделяю на длительность бита (в отсчетах таймера)
 		count_1 = BitCounter(bt, tim_seq, i);
 		// "1" не должна быть большой
@@ -122,15 +131,20 @@ converted_sequence Convert_sequence(bit_time* bt, timer_receive_sequence* tim_se
 				}
 				// TODO: EDIT THERE
 			}
+
 			if (buffer_iterator_ == 6!!!) {
 				if (halfword_iterator_ == 0) {
 					word_buffer_ = 0;
 					word_buffer_ |= Convert_6to4(buffer_);
+					halfword_iterator_ = 1; 
 				}
 				else {
 					word_buffer_ |= Convert_6to4(buffer_) << 4;
 					halfword_iterator_ = 0;
+
 					// TODO: 8 bit received ?????
+					word_count_ += 1;
+
 				}
 				buffer_ = 0;
 			}
@@ -153,12 +167,15 @@ converted_sequence Convert_sequence(bit_time* bt, timer_receive_sequence* tim_se
 	}
 }
 
+
 uint8_t BitCounter(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t index) {
 	uint8_t count_bit = 0;
 	count_bit = tim_seq->TIM_ticks_sequence_[index] / bt->TIM_ticks_per_bit_;  // TODO: 16 BIT TO 8 BIT
 	if (tim_seq->TIM_ticks_sequence_[index] / bt->TIM_ticks_per_bit_min_ > count_bit) ++count_bit; // checking the remainder
 	return count_bit;
 }
+
+
 uint8_t Convert_6to4(uint8_t data_6bit_in)
 {
 	for (uint8_t i = 0; i < 16; ++i) {
@@ -167,45 +184,57 @@ uint8_t Convert_6to4(uint8_t data_6bit_in)
 	return 0;
 }
 
+
 uint8_t Convert_4to6(uint8_t data_4bit_in)
 {
 	return symbols[data_4bit_in];
 }
+
 
 void init_rf() {
 	const uint32_t timer_freq = TIMER_CLOCK_FREQ;
 	bt = init_timings_(bitrate_[BIT_PER_SECOND_TRANSFER_SPEED], timer_freq);
 }
 
+
+// sequence can start with "0" and "1"
 void On_timer_count_interrupt() {
+	//TODO: replace DMA address timer to another input buffer
+
 	// copying the input buffer to local copy, the input buffer can be overwritten
 	timer_receive_sequence local_buffer;  //  TODO: check for nulling of sequence iterator
-	local_buffer = timer_buff;
-	//TODO: find start sequence
+	local_buffer = input_timer_buff_one;
+
+	//search start sequence
 	if (!started) {
-		for (unsigned i = 0; i < MAX_TIMER_BUFFER_LENGTH; i = i + 2) {
+		for (unsigned i = 0; i < MAX_TIMER_BUFFER_LENGTH; i = i + 1) {
 			uint16_t hight_lvl_time = local_buffer.TIM_ticks_sequence_[i]; // the duration of first signal is the duration of hight level
 			uint16_t low_lvl_time = local_buffer.TIM_ticks_sequence_[i + 1];  // the duration of second signal is the duration of low level
-			local_buffer.sequence_iterator_ = i + 1;
-			// start symbol is 0x38 or 0b111000 or 3*tick_time hight level and 3*tick_time low level
+			local_buffer.sequence_iterator_ = i ;
+			// start sequence is two start symbol, start symbol is 0x38 or 0b111000 (or 3*tick_time hight level and 3*tick_time low level) 
 
-			// initial condition
+			
+			// finding the initial condition
 			if (hight_lvl_time > bt.start_bit_ticks_min_ && hight_lvl_time < bt.start_bit_ticks_max_ && low_lvl_time > bt.start_bit_ticks_min_ && low_lvl_time < bt.start_bit_ticks_max_) {
 				message.data_length_= 0;
 				started = 1;
+
+				// if find start sequence reading data lenght and decoding
+				// the rest of the message will be decoded after a new interrupt
+				Read_data_from_buffer(&message, &local_buffer,1); // with reading & decoding data
+				return; // 
 			}
 
 		}
 	}
-	// if find start sequence reading data lenght
-	Read_data_lenght_from_buffer(&message,&local_buffer);
-	// start decoding
-	// the rest of the message will be decoded after a new interrupt
-	Append_data_from_local_buffer(&message, &local_buffer);
+
+	// decryption of the remaining message
+	Read_data_from_buffer(&message, &local_buffer,0);
 	// TODO: check transmitted_count decrement
 	// TODO: disable started
 	// started = 0;
 }
+
 
 converted_sequence Init_converted_sequence(uint8_t len)
 {
@@ -215,12 +244,34 @@ converted_sequence Init_converted_sequence(uint8_t len)
 	return seq;
 }
 
-void Read_data_lenght_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer)
-{
 
+void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading)
+{
+	if (first_reading)
+	{
+		Remove_second_start_sequence(local_buffer);
+	}
+	converted_sequence temp = Convert_sequence(&bt, local_buffer);
+
+	if (first_reading)
+	{
+		message->data_length_ = temp.sequence_[0];
+	}
 }
 
-void Append_data_from_local_buffer(data_full_msg* message, timer_receive_sequence* local_buffer)
+void Remove_second_start_sequence(timer_receive_sequence* local_buffer)
 {
-
+	// checking the second start symbol
+	uint16_t hight_lvl_time = local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_]; // the duration of first signal is the duration of hight level
+	uint16_t low_lvl_time = local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_ + 1];  // the duration of second signal is the duration of low level
+	if (hight_lvl_time > bt.start_bit_ticks_min_ && hight_lvl_time < bt.start_bit_ticks_max_ && low_lvl_time > bt.start_bit_ticks_min_ && low_lvl_time < bt.start_bit_ticks_max_)
+	{
+		local_buffer->sequence_iterator_ += 2; //  remove the start symbol from input buff
+	}
+	else if(hight_lvl_time > bt.start_bit_ticks_min_ && hight_lvl_time < bt.start_bit_ticks_max_&& low_lvl_time > bt.start_bit_ticks_min_ + bt.TIM_ticks_per_bit_min_)
+	{
+		local_buffer->sequence_iterator_ += 1;               // remove higth lvl of the  start symbol
+		local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_] -= bt.start_bit_ticks_; //  remove low lvl of the second start symbol
+	}
 }
+
