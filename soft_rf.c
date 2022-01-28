@@ -7,10 +7,11 @@
 
 typedef struct {
 	uint8_t* sequence_;
+	uint8_t words_;
 	uint8_t length_;
 }converted_sequence;
 
-converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* timers_sequence);
+converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* timers_sequence, uint16_t length);
 converted_sequence Init_converted_sequence(uint8_t len);
 void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading); 
 void Remove_second_start_sequence(timer_receive_sequence* local_buffer);
@@ -96,22 +97,22 @@ uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_seq
 // Decoding
 // считаю что данные приходят младшим битом вперед
 // разворот битов из LSB в MSB
-
-// sequence can start with "0" and "1"
-converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq)
+// предпологается что таймер принял 6 + 6 бит
+converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq,uint16_t length)
 {
-	converted_sequence res;
-	// предпологается что таймер принял 6 + 6 бит
-	// TODO: проверка на шум если длительность много меньше длительности бита - отсекаем
-	// TODO: длина сообщения
 	uint8_t start_ = tim_seq->sequence_iterator_;
+	// if the iterator points to the end
+	if (start_ == MAX_TIMER_BUFFER_LENGTH)return Init_converted_sequence(0);
+	converted_sequence res = Init_converted_sequence(length);
+
+	// TODO: проверка на шум если длительность много меньше длительности бита - отсекаем
+	
 	uint16_t buffer_ = { 0 };  // buffer to fill 6 bits 
 	uint8_t buffer_iterator_ = 0; //the buffer_iterator_ that counts the bits writen to the buffer_ 
 	uint8_t word_buffer_ = 0; // buffer padding by 4 bits, (each 6 bits convert to 4 bits )
 	uint8_t halfword_iterator_ = 0; // iterator need for checking 4 bits overflow 
-	uint8_t count_1 = 0, count_0 = 0, word_count_ = 0;
-	// if the iterator points to the end
-	if (start_ == MAX_TIMER_BUFFER_LENGTH)return Init_converted_sequence(0);
+	uint8_t count_1 = 0, count_0 = 0, word_count_ = 0; // count bits with "1", "0" and count decoded WORD (8bits)
+
 
 	// поиск
 	for (uint8_t i = start_; i < MAX_TIMER_BUFFER_LENGTH; i = i + 2)
@@ -147,23 +148,24 @@ converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq
 	}
 
 	// TODO: decoding from buffer to word_buffer
-	uint16_t mask = 0b0000000000111111; // 6 bit mask 1111 1100 0000 0000
+	uint16_t mask = 0b0000000000111111; // 6 bit mask 0000 0000 0011 1111
 
 	while(&buffer_iterator_ > 5)
 	{
-		word_buffer_ = Convert_6to4((uint8_t)((mask & buffer_) << (halfword_iterator_*4)));
+		word_buffer_ = Convert_6to4((uint8_t)(mask & buffer_)) << (halfword_iterator_*4);
 		halfword_iterator_ += 1;
 		buffer_ = buffer_ >> 6;
 		buffer_iterator_ -= 6;
 		if (halfword_iterator_ > 1)
 		{
-
+			res.sequence_[word_count_] = word_buffer_;
+			word_count_ += 1;
+			halfword_iterator_ = 0;
 		}
 	}
-	
-
-	}
+	res.words_ = word_count_;
 	tim_seq->sequence_iterator_ = 0; // reading sequence done
+	return res;
 }
 
 void AddBitsToBuffer(uint8_t bit, uint8_t* count, uint16_t* buff, uint8_t* iterator) {
@@ -252,6 +254,7 @@ converted_sequence Init_converted_sequence(uint8_t len)
 {
 	converted_sequence seq;
 	seq.sequence_ = malloc(len * sizeof(uint8_t));
+	seq.words_ = 0;
 	seq.length_ = len;
 	return seq;
 }
@@ -264,7 +267,10 @@ void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local
 		Remove_second_start_sequence(local_buffer); // offset sequence iterator
 	}
 
-	converted_sequence temp = ConvertSequence(&bt, local_buffer);
+
+
+	?TODO:calculate data_length
+	converted_sequence temp = ConvertSequence(&bt, local_buffer, message->data_length_);
 
 	if (first_reading)
 	{
