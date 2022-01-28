@@ -145,9 +145,10 @@ converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq
 			AddBitsToBuffer(BIT_1, &count_1, &buffer_, &buffer_iterator_);
 		}
 	}
-	tim_seq->sequence_iterator_ = 0; // reading sequence done
-			// TODO: decoding to word
-		
+
+	// TODO: decoding from buffer to word_buffer
+	uint16_t mask = 0b0000000000111111; // 6 bit mask 1111 1100 0000 0000
+
 	// TODO broken code
 	for (uint8_t y = 0; y < count_1 + count_0; ++y) {
 
@@ -184,6 +185,7 @@ converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq
 			buffer_ = 0;
 		}
 	}
+	tim_seq->sequence_iterator_ = 0; // reading sequence done
 }
 
 void AddBitsToBuffer(uint8_t bit, uint8_t* count, uint16_t* buff, uint8_t* iterator) {
@@ -197,11 +199,8 @@ void AddBitsToBuffer(uint8_t bit, uint8_t* count, uint16_t* buff, uint8_t* itera
 
 	// if bit = BIT_1
 
-	// calculate offset (in bits)   
-	uint8_t offset = sizeof(&buff) - *iterator;
-
 	// add to buffer
-	*buff = *buff | ((2 * (*count) + 1) << offset);
+	*buff = *buff | ((2 * (*count) + 1) << *iterator);
 	*iterator += *count;
 }
 
