@@ -106,7 +106,7 @@ converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq
 	// TODO: длина сообщения
 	uint8_t start_ = tim_seq->sequence_iterator_;
 	uint16_t buffer_ = { 0 };  // buffer to fill 6 bits 
-	uint8_t buffer_iterator_ = 0;
+	uint8_t buffer_iterator_ = 0; //the buffer_iterator_ that counts the bits writen to the buffer_ 
 	uint8_t word_buffer_ = 0; // buffer padding by 4 bits, (each 6 bits convert to 4 bits )
 	uint8_t halfword_iterator_ = 0; // iterator need for checking 4 bits overflow 
 	uint8_t count_1 = 0, count_0 = 0, word_count_ = 0;
@@ -149,41 +149,19 @@ converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq
 	// TODO: decoding from buffer to word_buffer
 	uint16_t mask = 0b0000000000111111; // 6 bit mask 1111 1100 0000 0000
 
-	// TODO broken code
-	for (uint8_t y = 0; y < count_1 + count_0; ++y) {
-
-		if (count_1 > 0)
-		{
-			buffer_ |= 1 << buffer_iterator_;
-			++buffer_iterator_; // до этого момента buffer_iterator не должен быть больше 6
-			count_1 -= 1;
-		}
-		else if (buffer_iterator_ < 6!!!&& count_0 > 0)
+	while(&buffer_iterator_ > 5)
+	{
+		word_buffer_ = Convert_6to4((uint8_t)((mask & buffer_) << (halfword_iterator_*4)));
+		halfword_iterator_ += 1;
+		buffer_ = buffer_ >> 6;
+		buffer_iterator_ -= 6;
+		if (halfword_iterator_ > 1)
 		{
 
-			while (buffer_iterator_ < 6 || count_0 > 0) {
-				buffer_iterator_ += 1;
-				count_0 -= 1;
-			}
-			// TODO: EDIT THERE
 		}
+	}
+	
 
-		if (buffer_iterator_ == 6!!!) {
-			if (halfword_iterator_ == 0) {
-				word_buffer_ = 0;
-				word_buffer_ |= Convert_6to4(buffer_);
-				halfword_iterator_ = 1;
-			}
-			else {
-				word_buffer_ |= Convert_6to4(buffer_) << 4;
-				halfword_iterator_ = 0;
-
-				// TODO: 8 bit received ?????
-				word_count_ += 1;
-
-			}
-			buffer_ = 0;
-		}
 	}
 	tim_seq->sequence_iterator_ = 0; // reading sequence done
 }
