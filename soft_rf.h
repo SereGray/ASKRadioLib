@@ -146,7 +146,6 @@ data_full_msg init_data_struct();
 
 void On_timer_count_interrupt(); 
 void Add_converted_signal_to_data(uint16_t *buffer, timer_receive_sequence *sequence, data_full_msg* data); // buffer - place where are dma send data_, sequence -... this function
-uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_sequence* sequence, data_full_msg* data);
 
 
 uint8_t Convert_6to4(uint8_t data_6bit_in); // return converted 4 bit , just "inline" it

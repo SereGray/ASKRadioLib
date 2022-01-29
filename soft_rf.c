@@ -75,25 +75,6 @@ data_full_msg init_data_struct()
 }
 
 
-//executed during a DMA request interrupt
-uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_sequence *sequence, data_full_msg * data)
-{
-	if (sequence->sequence_iterator_ == MAX_TIMER_BUFFER_LENGTH) return 1;
-	sequence->TIM_ticks_sequence_[sequence->sequence_iterator_] = buffer[0];
-	++sequence->sequence_iterator_;
-	sequence->TIM_ticks_sequence_[sequence->sequence_iterator_] = buffer[1];
-	++sequence->sequence_iterator_;
-	ConvertSequence(bt, sequence, data->);
-	if (sequence->sequence_iterator_ == MAX_TIMER_BUFFER_LENGTH) sequence->sequence_iterator_ = 0; // reset sequence
-	
-																								  
-	// get message lenght, set sequence_iterator in 0, receiving message
-	
-	// , when the message length of sequence iterator is reached  - set start_bit_ flag false and start interrupt?!?!?
-	return 0;
-}
-
-
 // Decoding
 // считаю что данные приходят младшим битом вперед
 // разворот битов из LSB в MSB
