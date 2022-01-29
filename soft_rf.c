@@ -11,7 +11,7 @@ typedef struct {
 	uint8_t length_;
 }converted_sequence;
 
-converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* timers_sequence, uint16_t length);
+converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* timers_sequence, uint16_t *length, uint16_t *data_iterator);
 converted_sequence Init_converted_sequence(uint8_t len);
 void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading); 
 void Remove_second_start_sequence(timer_receive_sequence* local_buffer);
@@ -83,7 +83,7 @@ uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_seq
 	++sequence->sequence_iterator_;
 	sequence->TIM_ticks_sequence_[sequence->sequence_iterator_] = buffer[1];
 	++sequence->sequence_iterator_;
-	ConvertSequence(bt, sequence, data);
+	ConvertSequence(bt, sequence, data->);
 	if (sequence->sequence_iterator_ == MAX_TIMER_BUFFER_LENGTH) sequence->sequence_iterator_ = 0; // reset sequence
 	
 																								  
@@ -98,12 +98,12 @@ uint8_t Add_signal_to_sequence(bit_time* bt, uint16_t* buffer, timer_receive_seq
 // считаю что данные приходят младшим битом вперед
 // разворот битов из LSB в MSB
 // предпологается что таймер принял 6 + 6 бит
-converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq,uint16_t length)
+converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq,uint16_t *length, uint16_t *data_iterator)
 {
 	uint8_t start_ = tim_seq->sequence_iterator_;
 	// if the iterator points to the end
 	if (start_ == MAX_TIMER_BUFFER_LENGTH)return Init_converted_sequence(0);
-	converted_sequence res = Init_converted_sequence(length);
+	converted_sequence res = Init_converted_sequence(*length);
 
 	// TODO: проверка на шум если длительность много меньше длительности бита - отсекаем
 	
@@ -161,6 +161,12 @@ converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq
 			res.sequence_[word_count_] = word_buffer_;
 			word_count_ += 1;
 			halfword_iterator_ = 0;
+
+			*data_iterator += 1;
+			if (*data_iterator > *length) 
+			{
+				break; // the end of the message
+			}
 		}
 	}
 	res.words_ = word_count_;
@@ -221,6 +227,7 @@ void On_timer_count_interrupt() {
 	// copying the input buffer to local copy, the input buffer can be overwritten
 	timer_receive_sequence local_buffer;  
 	local_buffer = input_timer_buff_one;
+
 	//TODO: replace DMA address timer to another input buffer after copying
 	
 	//search start sequence
@@ -265,12 +272,10 @@ void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local
 	if (first_reading)
 	{
 		Remove_second_start_sequence(local_buffer); // offset sequence iterator
+		message->data_length_ = MAX_DATA_LENGTH; // only for the first conversion, the data length is taken from the message after the first decoding secuence
 	}
 
-
-
-	?TODO:calculate data_length
-	converted_sequence temp = ConvertSequence(&bt, local_buffer, message->data_length_);
+	converted_sequence temp = ConvertSequence(&bt, local_buffer, &message->data_length_, &message->data_iterator_);
 
 	if (first_reading)
 	{
