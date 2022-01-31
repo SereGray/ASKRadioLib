@@ -11,11 +11,12 @@ typedef struct {
 	uint8_t length_;
 }converted_sequence;
 
-converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* timers_sequence, uint16_t *length, uint16_t *data_iterator);
+void ConvertDataToTIMSequence(uint8_t *send_buffer, uint8_t* data, uint8_t* data_length, uint16_t* data_iterator);
+converted_sequence ConvertTimerSequence(bit_time* bt, timer_receive_sequence* timers_sequence, uint16_t *length, uint16_t *data_iterator);
 converted_sequence Init_converted_sequence(uint8_t len);
 void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading); 
 void Remove_second_start_sequence(timer_receive_sequence* local_buffer);
-void Next_read_data_from_local_buffer(data_full_msg*  message, timer_receive_sequence* local_buffer);
+void SetTimerToStart();
 
 const uint32_t bitrate_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
 
@@ -75,11 +76,21 @@ data_full_msg init_data_struct()
 }
 
 
+void ConvertDataToTIMSequence(uint8_t* send_buffer, uint8_t* data, uint8_t* data_length, uint16_t* data_iterator)
+{
+	//TODO: there
+	for (uint8_t i = 0; i < data_length; i++)
+	{
+
+	}
+}
+
+
 // Decoding
 // считаю что данные приходят младшим битом вперед
 // разворот битов из LSB в MSB
 // предпологается что таймер принял 6 + 6 бит
-converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq,uint16_t *length, uint16_t *data_iterator)
+converted_sequence ConvertTimerSequence(bit_time* bt, timer_receive_sequence* tim_seq,uint16_t *length, uint16_t *data_iterator)
 {
 	uint8_t start_ = tim_seq->sequence_iterator_;
 	// if the iterator points to the end
@@ -128,7 +139,7 @@ converted_sequence ConvertSequence(bit_time* bt, timer_receive_sequence* tim_seq
 		}
 	}
 
-	// TODO: decoding from buffer to word_buffer
+	// decoding from buffer to word_buffer
 	uint16_t mask = 0b0000000000111111; // 6 bit mask 0000 0000 0011 1111
 
 	while(&buffer_iterator_ > 5)
@@ -237,6 +248,20 @@ void On_timer_count_interrupt() {
 	Read_data_from_buffer(&message, &local_buffer, RESUME_READ_DATA); // if full message read - set started = 0
 }
 
+void SendData(uint8_t* data, uint8_t data_length)
+{
+	uint16_t data_iterator = 0;
+	uint8_t send_buffer[MAX_TIMER_BUFFER_LENGTH] = { 0 };
+	// add start sequence
+	send_buffer[0] = 0x38;
+	send_buffer[1] = 0x38;
+	//  convert data from 8 bit to 6+6 bit (4to6)
+	ConvertDataToTIMSequence(&send_buffer, data, data_length, &data_iterator);
+	// TODO: add CRC
+	// TODO: start transmitting
+	SetTimerToStart();
+}
+
 
 converted_sequence Init_converted_sequence(uint8_t len)
 {
@@ -256,7 +281,7 @@ void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local
 		message->data_length_ = MAX_DATA_LENGTH; // only for the first conversion, the data length is taken from the message after the first decoding secuence
 	}
 
-	converted_sequence temp = ConvertSequence(&bt, local_buffer, &message->data_length_, &message->data_iterator_);
+	converted_sequence temp = ConvertTimerSequence(&bt, local_buffer, &message->data_length_, &message->data_iterator_);
 
 	if (first_reading)
 	{
@@ -297,5 +322,10 @@ void Remove_second_start_sequence(timer_receive_sequence* local_buffer)
 		local_buffer->sequence_iterator_ += 1;               // remove higth lvl of the  start symbol
 		local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_] -= bt.start_bit_ticks_; //  remove low lvl of the second start symbol
 	}
+}
+
+void SetTimerToStart()
+{
+	//TODO : set TIM_CR register to start 
 }
 
