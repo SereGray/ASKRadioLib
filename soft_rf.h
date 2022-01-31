@@ -66,12 +66,19 @@
  * 
  */
 
+
+// TODO: data from array to pointer
+
 #ifndef INC_SOFT_RF_H_
 #define INC_SOFT_RF_H_
 
 #include<math.h>
 #include<inttypes.h>
 #include<malloc.h>
+
+//internals headers
+#include"internal_structures.h"
+#include"data_handler.h"
 
 #define BIT_PER_SECOND_TRANSFER_SPEED 4 // speed rate in bts speed_[] bellow
 
@@ -85,45 +92,18 @@
 
 #define TIMER_CLOCK_FREQ 72000000;
 
-typedef struct
-{
-     double bit_time_; // длительность 1сек(10^9 мкс) бита 1/скорость связи
-     double one_timer_tick_time_ ; // длительность 1сек(10^9 мкс) тика 1/частота
-     uint32_t TIM_ticks_per_bit_;
-     uint8_t delta_timer_ticks_per_bit_ ;  // допуск на длину бита +- 1/50 длительности бита
-     uint16_t TIM_ticks_per_bit_min_;
-     uint16_t TIM_ticks_per_bit_max_;
-     uint16_t start_bit_ticks_;
-     uint16_t start_bit_ticks_min_;
-     uint16_t start_bit_ticks_max_;
- }bit_time;
+static uint8_t starts_from_high_lvl_bit = 0;
 
-typedef struct
-{
-    // циклический буффер значений таймера
-    uint16_t TIM_ticks_sequence_[MAX_TIMER_BUFFER_LENGTH]; //{0,} // принимаемая последовательность
-// (не переведенная) (304 бита (19*16бит) округл до 20)
-    uint16_t sequence_iterator_; // 0 TODO: нужно что бы при приеме данных этот итератор увеличивался
-}timer_receive_sequence; 
+//static uint16_t transmitted_count = 0; not used
+// "1" when transmition started 
+static uint8_t started = 0;
+// the starts_from_bit indicates which bit the sequence starts from
 
 
-typedef struct
-{
-    uint8_t data_length_; // = 0; 
-    uint16_t data_iterator_;//  0; // побитовый итератор, номера битов: 7`6`5`4`3`2`1`0  15`14`13`12`11`10`9`8   23`22`21 ...
-    uint8_t data_[MAX_DATA_LENGTH];//{ 0, };
-    uint8_t CRC_message_[2]; // { 0, };
-} data_full_msg;
-
-extern const uint32_t bitrate_[]; // bitrate
-
-extern const uint8_t start_symbol; // 0x38 0b111000  12bit symbol <--- 2x
-
-static const uint8_t symbols[] =    // спизжено с virtualwire - данная таблица переводит 4 бита в 6, при этом у 6 бит равное отношение "1" и "0" т.е. 3 "1" и 3 "0"
-{
-    0xd,  0xe,  0x13, 0x15, 0x16, 0x19, 0x1a, 0x1c, // 001101, 001110, 010011,
-    0x23, 0x25, 0x26, 0x29, 0x2a, 0x2c, 0x32, 0x34
-};
+timer_receive_sequence input_timer_buff_one; // buffer for timer
+timer_receive_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
+bit_time bt; // timings
+data_full_msg message;
 
 // оцифровывает добавляет сигнал в виде двух длительностей
 //  ( длительность выского уровня и длительность низкого уровня) к
@@ -138,12 +118,12 @@ void send(uint8_t * msg);
 #endif // RECEIVER
 
 void init_rf(); // init radio 
-
 // PRIVATE FUNCTIONS ( will be send to .c file)
 bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq);
 data_full_msg init_data_struct();
 
-void On_timer_count_interrupt();
-void SendData(uint8_t* data, uint8_t data_length);
+void on_timer_count_interrupt();
+void send_data(uint8_t* data, uint8_t data_length);
+void SetTimerToStart();
 
 #endif /* INC_SOFT_RF_H_ */
