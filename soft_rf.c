@@ -13,6 +13,10 @@ typedef struct {
 
 void ConvertDataToTIMSequence(uint8_t *send_buffer, uint8_t* data, uint8_t* data_length, uint16_t* data_iterator);
 converted_sequence ConvertTimerSequence(bit_time* bt, timer_receive_sequence* timers_sequence, uint16_t *length, uint16_t *data_iterator);
+void AddBitsToBuffer(uint8_t bit, uint8_t* count, uint16_t* buff, uint8_t* iterator);
+uint8_t BitCounter(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t index);
+uint8_t Convert_6to4(uint8_t data_6bit_in); // return converted 4 bit , just "inline" it
+uint8_t Convert_4to6(uint8_t data_4bit_in); // return converted 6 bit ,
 converted_sequence Init_converted_sequence(uint8_t len);
 void Read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading); 
 void Remove_second_start_sequence(timer_receive_sequence* local_buffer);
@@ -59,10 +63,6 @@ bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
 	return bt;
 }
 
-void Add_converted_signal_to_data(uint16_t* buffer, uint16_t* sequence, uint16_t* sequence_iterator)
-{
-
-}
 
 data_full_msg init_data_struct()
 {
