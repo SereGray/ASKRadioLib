@@ -1,56 +1,26 @@
 #include"soft_rf.h"
 
 
+extern uint8_t max_timer_buffer_length;
+extern uint8_t max_data_length;
+
+data_full_msg* received_message = NULL;
 
 
-
-
-bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
-{
-	bit_time bt;
-	// duration 1sec(10^9 мкс) one bit/changed bitrate
-	bt.bit_time_ = 1000000000.0 / changed_bitrate;
-	// duration 1sec(10^9 мкс) one tick /frecuency
-	bt.one_timer_tick_time_ = 1000000000.0 / timer_freq;
-	bt.TIM_ticks_per_bit_ = round(bt.bit_time_ / \
-		bt.one_timer_tick_time_);
-	// bit lenght tolerance +- 1/50 of bit duration
-	bt.delta_timer_ticks_per_bit_ = bt.TIM_ticks_per_bit_ / 50;
-	bt.TIM_ticks_per_bit_min_ = bt.TIM_ticks_per_bit_ - \
-		bt.delta_timer_ticks_per_bit_;
-	bt.TIM_ticks_per_bit_max_ = bt.TIM_ticks_per_bit_ + \
-		bt.delta_timer_ticks_per_bit_;
-	bt.start_bit_ticks_ = 3 * bt.TIM_ticks_per_bit_;
-	bt.start_bit_ticks_min_ = bt.start_bit_ticks_ - \
-		bt.delta_timer_ticks_per_bit_;
-	bt.start_bit_ticks_max_ = bt.start_bit_ticks_ + \
-		bt.delta_timer_ticks_per_bit_;
-	return bt;
-}
-
-
-data_full_msg init_data_struct()
-{
-	data_full_msg data;
-	data.data_length_ = 0;
-	data.data_iterator_ = 0;
-	for (unsigned i = 0; i < MAX_DATA_LENGTH; i++) data.data_[i] = i;
-	data.CRC_message_[0] = 0;
-	data.CRC_message_[1] = 0;
-	return data;
-}
 
 
 void init_rf() {
 	const uint32_t timer_freq = TIMER_CLOCK_FREQ;
 	bt = init_timings_(bitrate_[BIT_PER_SECOND_TRANSFER_SPEED], timer_freq);
+	//const uint16_t MAX_TIMER_BUFFER_LENGTH = 24; // 12 бит Х 2
+	max_timer_buffer_length = MAX_TIMER_BUFFER_LENGTH;
+		//const uint8_t max_data_length_ = 27; // 27 byte data + 1 byte data lenght + 2 byte CRC
+	max_data_length = MAX_DATA_LENGTH;
 }
 
 
 // sequence can start with "0" and "1"
 void on_timer_count_interrupt() {
-
-
 	// copying the input buffer to local copy, the input buffer can be overwritten
 	timer_receive_sequence local_buffer;  
 	local_buffer = input_timer_buff_one;
@@ -68,19 +38,18 @@ void on_timer_count_interrupt() {
 			
 			// finding the initial condition
 			if (hight_lvl_time > bt.start_bit_ticks_min_ && hight_lvl_time < bt.start_bit_ticks_max_ && low_lvl_time > bt.start_bit_ticks_min_ && low_lvl_time < bt.start_bit_ticks_max_) {
-				message.data_length_= 0;
 				started = 1;
 
 				// if find start sequence reading data lenght and decoding
 				// the rest of the message will be decoded after a new interrupt
-				read_data_from_buffer(&message, &local_buffer,START_READ_DATA); // with reading & decoding data
+				read_data_from_buffer(&received_message, &local_buffer,START_READ_DATA); // with reading & decoding data
 				return; // 
 			}
 
 		}
 	}
 	// decryption of the remaining message
-	read_data_from_buffer(&message, &local_buffer, RESUME_READ_DATA); // if full message read - set started = 0
+	read_data_from_buffer(&received_message, &local_buffer, RESUME_READ_DATA); // if full message read - set started = 0
 	//TODO: Receive start on_Receive() funct
 }
 
@@ -95,14 +64,14 @@ void send_data(uint8_t* data, uint8_t data_length)
 	convert_data_to_TIM_sequence(&send_buffer, data, data_length, &data_iterator);
 	// TODO: add CRC
 	// TODO: start transmitting
-	SetTimerToStart();
+	set_timer_to_start();
 }
 
 
 
 
 
-void SetTimerToStart()
+void set_timer_to_start()
 {
 	//TODO : set TIM_CR register to start 
 }

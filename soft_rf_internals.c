@@ -1,4 +1,9 @@
-#include"data_handler.h"
+#include"soft_rf_internals.h"
+
+
+const uint32_t bitrate_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
+
+const uint8_t start_symbol = 0x38;
 
 
 
@@ -34,8 +39,8 @@ converted_sequence convert_timer_sequence(bit_time* bt, timer_receive_sequence* 
 {
 	uint8_t start_ = tim_seq->sequence_iterator_;
 	// if the iterator points to the end
-	if (start_ == MAX_TIMER_BUFFER_LENGTH)return Init_converted_sequence(0);
-	converted_sequence res = Init_converted_sequence(*length);
+	if (start_ == max_timer_buffer_length)return init_converted_sequence(0);
+	converted_sequence res = init_converted_sequence(*length);
 
 	// TODO: проверка на шум если длительность много меньше длительности бита - отсекаем
 
@@ -47,7 +52,7 @@ converted_sequence convert_timer_sequence(bit_time* bt, timer_receive_sequence* 
 
 
 	// поиск
-	for (uint8_t i = start_; i < MAX_TIMER_BUFFER_LENGTH; i = i + 2)
+	for (uint8_t i = start_; i < max_timer_buffer_length; i = i + 2)
 	{ //TODO: что если sequence_iterator нечетный
 		uint8_t index_0 = 0, index_1 = 0; // index shows where bits are high (index_1) or low (index_0) on this iteration
 
@@ -129,29 +134,44 @@ uint8_t convert_4to6(uint8_t data_4bit_in)
 	return symbols[data_4bit_in];
 }
 
-converted_sequence Init_converted_sequence(uint8_t len)
-{
-	converted_sequence seq;
-	seq.sequence_ = malloc(len * sizeof(uint8_t));
-	seq.words_ = 0;
-	seq.length_ = len;
-	return seq;
-}
 
+bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
+{
+	bit_time bt;
+	// duration 1sec(10^9 мкс) one bit/changed bitrate
+	bt.bit_time_ = 1000000000.0 / changed_bitrate;
+	// duration 1sec(10^9 мкс) one tick /frecuency
+	bt.one_timer_tick_time_ = 1000000000.0 / timer_freq;
+	bt.TIM_ticks_per_bit_ = round(bt.bit_time_ / \
+		bt.one_timer_tick_time_);
+	// bit lenght tolerance +- 1/50 of bit duration
+	bt.delta_timer_ticks_per_bit_ = bt.TIM_ticks_per_bit_ / 50;
+	bt.TIM_ticks_per_bit_min_ = bt.TIM_ticks_per_bit_ - \
+		bt.delta_timer_ticks_per_bit_;
+	bt.TIM_ticks_per_bit_max_ = bt.TIM_ticks_per_bit_ + \
+		bt.delta_timer_ticks_per_bit_;
+	bt.start_bit_ticks_ = 3 * bt.TIM_ticks_per_bit_;
+	bt.start_bit_ticks_min_ = bt.start_bit_ticks_ - \
+		bt.delta_timer_ticks_per_bit_;
+	bt.start_bit_ticks_max_ = bt.start_bit_ticks_ + \
+		bt.delta_timer_ticks_per_bit_;
+	return bt;
+}
 
 void read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading)
 {
 	if (first_reading)
 	{
 		remove_second_start_sequence(local_buffer); // offset sequence iterator
-		message->data_length_ = MAX_DATA_LENGTH; // only for the first conversion, the data length is taken from the message after the first decoding secuence
+		//message->data_length_ = MAX_DATA_LENGTH; // only for the first conversion, the data length is taken from the message after the first decoding secuence
+		message = init_data_struct(max_data_length);
 	}
 
 	converted_sequence temp = convert_timer_sequence(&bt, local_buffer, &message->data_length_, &message->data_iterator_);
 
 	if (first_reading)
 	{
-		message->data_length_ = temp.sequence_[0];
+		message = init_data_struct(temp.sequence_[0]);
 	}
 
 	//copying data from sequence 
@@ -188,4 +208,29 @@ void remove_second_start_sequence(timer_receive_sequence* local_buffer)
 		local_buffer->sequence_iterator_ += 1;               // remove higth lvl of the  start symbol
 		local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_] -= bt.start_bit_ticks_; //  remove low lvl of the second start symbol
 	}
+}
+
+converted_sequence init_converted_sequence(uint8_t len)
+{
+	converted_sequence seq;
+	seq.sequence_ = malloc(len * sizeof(uint8_t));
+	seq.words_ = 0;
+	seq.length_ = len;
+	return seq;
+}
+
+data_full_msg* init_data_struct(uint8_t len)
+{
+	// TODO: who delete var "data" ? "data" is deleted after the funcion ends ? memory leak ?
+	data_full_msg* data = malloc(sizeof(data_full_msg));
+	if (data)
+	{
+		data->data_length_ = len;
+		data->data_iterator_ = 0;
+		for (unsigned i = 0; i < data->data_length_; i++) data->data_[i] = 0;
+		data->CRC_message_[0] = 0;
+		data->CRC_message_[1] = 0;
+		return data;
+	}
+	return NULL;
 }

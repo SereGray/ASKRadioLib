@@ -115,6 +115,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -147,6 +149,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -156,15 +159,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="internal_structures.c" />
-    <ClCompile Include="C_project_test.c" />
-    <ClCompile Include="data_handler.c" />
+    <ClCompile Include="unittest.c" />
+    <ClCompile Include="soft_rf_internals.c" />
     <ClCompile Include="soft_rf.c" />
     <ClCompile Include="unity.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="internal_structures.h" />
-    <ClInclude Include="data_handler.h" />
+    <ClInclude Include="soft_rf_internals.h" />
     <ClInclude Include="soft_rf.h" />
     <ClInclude Include="unity.h" />
     <ClInclude Include="unity_internals.h" />

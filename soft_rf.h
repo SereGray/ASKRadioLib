@@ -67,7 +67,6 @@
  */
 
 
-// TODO: data from array to pointer
 
 #ifndef INC_SOFT_RF_H_
 #define INC_SOFT_RF_H_
@@ -77,8 +76,7 @@
 #include<malloc.h>
 
 //internals headers
-#include"internal_structures.h"
-#include"data_handler.h"
+#include"soft_rf_internals.h"
 
 #define BIT_PER_SECOND_TRANSFER_SPEED 4 // speed rate in bts speed_[] bellow
 
@@ -92,26 +90,26 @@
 
 #define TIMER_CLOCK_FREQ 72000000;
 
-static uint8_t starts_from_high_lvl_bit = 0;
 
 //static uint16_t transmitted_count = 0; not used
 // "1" when transmition started 
-static uint8_t started = 0;
+
 // the starts_from_bit indicates which bit the sequence starts from
 
+static timer_receive_sequence input_timer_buff_one; // buffer for timer
+static timer_receive_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
 
-timer_receive_sequence input_timer_buff_one; // buffer for timer
-timer_receive_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
-bit_time bt; // timings
-data_full_msg message;
+extern data_full_msg* received_message;
+
 
 // оцифровывает добавляет сигнал в виде двух длительностей
 //  ( длительность выского уровня и длительность низкого уровня) к
 // последовательности данных итератор указывает на позицию вставки следующего значения
 
 //PUBLIC FUNCTIONS
-// uint8_t may cast to any type
-void send(uint8_t * msg);
+void on_timer_count_interrupt();
+void send_data(uint8_t* data, uint8_t data_length);
+//void send(uint8_t * msg);
 
 #ifdef RECEIVER
     void on_receive(uint8_t * msg, uint16_t len); // after receive MUST BE IMPLEMENTED BY USER
@@ -119,11 +117,9 @@ void send(uint8_t * msg);
 
 void init_rf(); // init radio 
 // PRIVATE FUNCTIONS ( will be send to .c file)
-bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq);
-data_full_msg init_data_struct();
 
-void on_timer_count_interrupt();
-void send_data(uint8_t* data, uint8_t data_length);
-void SetTimerToStart();
+
+
+void set_timer_to_start();
 
 #endif /* INC_SOFT_RF_H_ */

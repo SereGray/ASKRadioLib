@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="C_project_test.c">
+    <ClCompile Include="unittest.c">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="unity.c">
@@ -27,7 +27,7 @@
     <ClCompile Include="internal_structures.c">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="data_handler.c">
+    <ClCompile Include="internal_functions.c">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
@@ -44,7 +44,7 @@
     <ClInclude Include="internal_structures.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="data_handler.h">
+    <ClInclude Include="internal_functions.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
