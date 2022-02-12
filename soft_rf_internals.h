@@ -55,7 +55,7 @@ static const uint8_t symbols[] =    // спизжено с virtualwire - данная таблица п
 
 extern const uint8_t start_symbol; // 0x38 0b111000  12bit symbol <--- 2x
 static uint8_t started = 0;
-static uint8_t starts_from_high_lvl_bit = 0;
+static uint8_t starts_from_high_lvl_bit = 0; // the starts_from_high_lvl_bit indicates which bit the sequence starts from hight lvl
 extern const uint32_t bitrate_[]; // bitrate
 
 uint8_t max_timer_buffer_length;

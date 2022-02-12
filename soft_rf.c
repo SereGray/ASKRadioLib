@@ -1,11 +1,13 @@
 #include"soft_rf.h"
+#include"soft_rf_internals.h"
 
 
 extern uint8_t max_timer_buffer_length;
 extern uint8_t max_data_length;
 
 data_full_msg* received_message = NULL;
-
+timer_receive_sequence input_timer_buff_one; // buffer for timer
+timer_receive_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
 
 
 
@@ -19,7 +21,7 @@ void init_rf() {
 }
 
 
-// sequence can start with "0" and "1"
+
 void on_timer_count_interrupt() {
 	// copying the input buffer to local copy, the input buffer can be overwritten
 	timer_receive_sequence local_buffer;  

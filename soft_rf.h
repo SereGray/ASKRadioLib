@@ -75,8 +75,7 @@
 #include<inttypes.h>
 #include<malloc.h>
 
-//internals headers
-#include"soft_rf_internals.h"
+ //internals headers
 
 #define BIT_PER_SECOND_TRANSFER_SPEED 4 // speed rate in bts speed_[] bellow
 
@@ -85,41 +84,28 @@
 
  //const uint16_t MAX_TIMER_BUFFER_LENGTH = 24; // 12 бит Х 2
 #define MAX_TIMER_BUFFER_LENGTH 24
-//const uint8_t max_data_length_ = 27; // 27 byte data + 1 byte data lenght + 2 byte CRC
-#define MAX_DATA_LENGTH 27
-
+#define MAX_DATA_LENGTH 27 // 27 byte data + 1 byte data lenght + 2 byte CRC
 #define TIMER_CLOCK_FREQ 72000000;
 
 
-//static uint16_t transmitted_count = 0; not used
-// "1" when transmition started 
-
-// the starts_from_bit indicates which bit the sequence starts from
-
-static timer_receive_sequence input_timer_buff_one; // buffer for timer
-static timer_receive_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
-
-extern data_full_msg* received_message;
-
-
-// оцифровывает добавляет сигнал в виде двух длительностей
-//  ( длительность выского уровня и длительность низкого уровня) к
-// последовательности данных итератор указывает на позицию вставки следующего значения
 
 //PUBLIC FUNCTIONS
 void on_timer_count_interrupt();
+
 void send_data(uint8_t* data, uint8_t data_length);
+void init_rf(); // init radio 
+void set_timer_to_start();
 //void send(uint8_t * msg);
 
 #ifdef RECEIVER
     void on_receive(uint8_t * msg, uint16_t len); // after receive MUST BE IMPLEMENTED BY USER
 #endif // RECEIVER
 
-void init_rf(); // init radio 
+
 // PRIVATE FUNCTIONS ( will be send to .c file)
 
 
 
-void set_timer_to_start();
+
 
 #endif /* INC_SOFT_RF_H_ */
