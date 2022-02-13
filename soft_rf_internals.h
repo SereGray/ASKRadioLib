@@ -2,6 +2,7 @@
 #define INTERNAL_FUNCTIONS
 
 #include<inttypes.h>
+#include<math.h>
 
 
 #define BIT_1 1
@@ -11,8 +12,6 @@
 
 typedef struct
 {
-    double bit_time_; // длительность 1сек(10^9 мкс) бита 1/скорость связи
-    double one_timer_tick_time_; // длительность 1сек(10^9 мкс) тика 1/частота
     uint32_t TIM_ticks_per_bit_;
     uint8_t delta_timer_ticks_per_bit_;  // допуск на длину бита +- 1/50 длительности бита
     uint16_t TIM_ticks_per_bit_min_;

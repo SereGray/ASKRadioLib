@@ -138,12 +138,7 @@ uint8_t convert_4to6(uint8_t data_4bit_in)
 bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
 {
 	bit_time bt;
-	// duration 1sec(10^9 ìêñ) one bit/changed bitrate
-	bt.bit_time_ = 1000000000.0 / changed_bitrate;
-	// duration 1sec(10^9 ìêñ) one tick /frecuency
-	bt.one_timer_tick_time_ = 1000000000.0 / timer_freq;
-	bt.TIM_ticks_per_bit_ = round(bt.bit_time_ / \
-		bt.one_timer_tick_time_);
+	bt.TIM_ticks_per_bit_ = (uint32_t)round((double)timer_freq / (double)changed_bitrate);
 	// bit lenght tolerance +- 1/50 of bit duration
 	bt.delta_timer_ticks_per_bit_ = bt.TIM_ticks_per_bit_ / 50;
 	bt.TIM_ticks_per_bit_min_ = bt.TIM_ticks_per_bit_ - \

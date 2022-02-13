@@ -12,6 +12,7 @@ int FunctionUnderTest();
 
 void test_convert_6to4(void);
 void test_convert_4to6(void);
+void test_init_timings(void);
 
 
 int main(void)
@@ -23,7 +24,8 @@ int main(void)
     //TEST_ASSERT(a == 2); //this one will fail
     test_FunctionUnderTest_should_ReturnFive();
     test_convert_6to4();
-    test_convert_4to6();
+    test_convert_4to6(); 
+    test_init_timings();
     getchar();
 }
 
@@ -41,6 +43,15 @@ void test_convert_4to6(void)
     TEST_ASSERT_EQUAL_INT(0x16, convert_4to6(4));
 }
 
+void test_init_timings(void)
+{
+    uint32_t timer_frequency = 72000000;
+    bt = init_timings_(bitrate_[0], timer_frequency); // bitrate 9600
+    // bit time 1`000`000`000 / 9600
+    // one timer tick time 1`000`000`000 / 72000000 
+    // TIM_ticks_per_bit_ = round(72000000 / 9600)
+    TEST_ASSERT_EQUAL_INT(round(timer_frequency / bitrate_[0]), bt.TIM_ticks_per_bit_);
+}
 
 void setUp(void) {}
 void tearDown(void) {}
