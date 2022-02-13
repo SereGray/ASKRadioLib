@@ -50,7 +50,16 @@ void test_init_timings(void)
     // bit time 1`000`000`000 / 9600
     // one timer tick time 1`000`000`000 / 72000000 
     // TIM_ticks_per_bit_ = round(72000000 / 9600)
-    TEST_ASSERT_EQUAL_INT(round(timer_frequency / bitrate_[0]), bt.TIM_ticks_per_bit_);
+    // delta_timer_ticks_per_bit_ = 150 
+    uint16_t ticks_per_bit = round(timer_frequency / bitrate_[0]);
+    uint8_t delta = ticks_per_bit / 50;
+    TEST_ASSERT_EQUAL_INT(ticks_per_bit, bt.TIM_ticks_per_bit_);
+    TEST_ASSERT_EQUAL_INT(bt.delta_timer_ticks_per_bit_, 150);
+    TEST_ASSERT_EQUAL_INT(bt.TIM_ticks_per_bit_min_, ticks_per_bit - delta);
+    TEST_ASSERT_EQUAL_INT(bt.TIM_ticks_per_bit_max_, ticks_per_bit + delta);
+    TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_, ticks_per_bit * 3);
+    TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_min_, ticks_per_bit * 3 - delta * 3);
+    TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_max_, ticks_per_bit * 3 + delta * 3);
 }
 
 void setUp(void) {}

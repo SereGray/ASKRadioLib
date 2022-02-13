@@ -140,16 +140,16 @@ bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
 	bit_time bt;
 	bt.TIM_ticks_per_bit_ = (uint32_t)round((double)timer_freq / (double)changed_bitrate);
 	// bit lenght tolerance +- 1/50 of bit duration
-	bt.delta_timer_ticks_per_bit_ = bt.TIM_ticks_per_bit_ / 50;
+	bt.delta_timer_ticks_per_bit_ = (uint8_t)round((double)bt.TIM_ticks_per_bit_ / 50);
 	bt.TIM_ticks_per_bit_min_ = bt.TIM_ticks_per_bit_ - \
 		bt.delta_timer_ticks_per_bit_;
 	bt.TIM_ticks_per_bit_max_ = bt.TIM_ticks_per_bit_ + \
 		bt.delta_timer_ticks_per_bit_;
 	bt.start_bit_ticks_ = 3 * bt.TIM_ticks_per_bit_;
 	bt.start_bit_ticks_min_ = bt.start_bit_ticks_ - \
-		bt.delta_timer_ticks_per_bit_;
+		bt.delta_timer_ticks_per_bit_ * 3;
 	bt.start_bit_ticks_max_ = bt.start_bit_ticks_ + \
-		bt.delta_timer_ticks_per_bit_;
+		bt.delta_timer_ticks_per_bit_ * 3;
 	return bt;
 }
 
