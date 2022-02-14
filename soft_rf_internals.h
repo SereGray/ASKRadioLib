@@ -3,6 +3,7 @@
 
 #include<inttypes.h>
 #include<math.h>
+#include<stdlib.h>
 
 
 #define BIT_1 1
@@ -66,14 +67,15 @@ bit_time bt; // timings
 
 void add_bits_to_buffer(uint8_t bit, uint8_t *count, uint16_t *buff, uint8_t *iterator);
 uint8_t bit_counter(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t index);
-converted_sequence convert_timer_sequence(bit_time* bt, timer_receive_sequence* timers_sequence, uint16_t* length, uint16_t* data_iterator);
+converted_sequence* convert_timer_sequence(bit_time* bt, timer_receive_sequence* timers_sequence, uint16_t* length, uint16_t* data_iterator);
 void convert_data_to_TIM_sequence(uint8_t* send_buffer, uint8_t* data, uint8_t* data_length, uint16_t* data_iterator);
 uint8_t convert_6to4(uint8_t data_6bit_in); // return converted 4 bit , just "inline" it
 uint8_t convert_4to6(uint8_t data_4bit_in); // return converted 6 bit ,
 bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq);
 void read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading);
 void remove_second_start_sequence(timer_receive_sequence* local_buffer);
-converted_sequence init_converted_sequence(uint8_t len);
+converted_sequence* init_converted_sequence(uint8_t len);
+void delete_converted_sequence(converted_sequence* seq);
 data_full_msg* init_data_struct(uint8_t len);
 
 

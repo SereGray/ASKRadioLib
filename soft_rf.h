@@ -73,7 +73,6 @@
 
 #include<math.h>
 #include<inttypes.h>
-#include<malloc.h>
 
  //internals headers
 

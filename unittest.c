@@ -13,20 +13,22 @@ int FunctionUnderTest();
 void test_convert_6to4(void);
 void test_convert_4to6(void);
 void test_init_timings(void);
+void test_init_timings_all_bitrate_testing(void);
+void test_init_timings_manual_testing(void);
+void test_init_delete_convert_sequence(void);
 
 
 int main(void)
 {
-    char test[] = "soft_rf_internals unit testing\n";
-    printf("%s",test);
-    int a = 1;
-    TEST_ASSERT(a == 1); //this one will pass
-    //TEST_ASSERT(a == 2); //this one will fail
-    test_FunctionUnderTest_should_ReturnFive();
-    test_convert_6to4();
-    test_convert_4to6(); 
-    test_init_timings();
-    getchar();
+    UNITY_BEGIN();
+    RUN_TEST(test_FunctionUnderTest_should_ReturnFive);
+    RUN_TEST(test_convert_6to4);
+    RUN_TEST(test_convert_4to6);
+    RUN_TEST(test_init_timings);
+    RUN_TEST(test_init_timings_all_bitrate_testing);
+    RUN_TEST(test_init_timings_manual_testing);
+    RUN_TEST(test_init_delete_convert_sequence);
+    UNITY_END();
 }
 
 void test_convert_6to4(void) 
@@ -51,10 +53,10 @@ void test_init_timings(void)
     // one timer tick time 1`000`000`000 / 72000000 
     // TIM_ticks_per_bit_ = round(72000000 / 9600)
     // delta_timer_ticks_per_bit_ = 150 
-    uint16_t ticks_per_bit = round(timer_frequency / bitrate_[0]);
-    uint8_t delta = ticks_per_bit / 50;
+    uint32_t ticks_per_bit = (uint32_t)round((double)timer_frequency / (double)bitrate_[0]);
+    uint8_t delta = (uint8_t)round((double)ticks_per_bit / 50);
     TEST_ASSERT_EQUAL_INT(ticks_per_bit, bt.TIM_ticks_per_bit_);
-    TEST_ASSERT_EQUAL_INT(bt.delta_timer_ticks_per_bit_, 150);
+    TEST_ASSERT_EQUAL_INT(bt.delta_timer_ticks_per_bit_, delta);
     TEST_ASSERT_EQUAL_INT(bt.TIM_ticks_per_bit_min_, ticks_per_bit - delta);
     TEST_ASSERT_EQUAL_INT(bt.TIM_ticks_per_bit_max_, ticks_per_bit + delta);
     TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_, ticks_per_bit * 3);
@@ -62,6 +64,57 @@ void test_init_timings(void)
     TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_max_, ticks_per_bit * 3 + delta * 3);
 }
 
+void test_init_timings_all_bitrate_testing(void) 
+{
+    for (int exponent = 0; exponent < 3; exponent++)
+    {
+        for (int i = 0; i < 6; i++)
+        {
+            uint32_t timer_frequency = 72000000 / 8 * 2^ exponent;
+            bt = init_timings_(bitrate_[i], timer_frequency); // bitrate 9600
+            // bit time 1`000`000`000 / 9600
+            // one timer tick time 1`000`000`000 / 72000000 
+            // TIM_ticks_per_bit_ = round(72000000 / 9600)
+            // delta_timer_ticks_per_bit_ = 150 
+            uint32_t ticks_per_bit = (uint32_t)round((double)timer_frequency / (double)bitrate_[i]); 
+            uint8_t delta = (uint8_t)round((double)ticks_per_bit / 50);
+            TEST_ASSERT_EQUAL_INT(ticks_per_bit, bt.TIM_ticks_per_bit_);
+            TEST_ASSERT_EQUAL_INT(bt.delta_timer_ticks_per_bit_, delta);
+            TEST_ASSERT_EQUAL_INT(bt.TIM_ticks_per_bit_min_, ticks_per_bit - delta);
+            TEST_ASSERT_EQUAL_INT(bt.TIM_ticks_per_bit_max_, ticks_per_bit + delta);
+            TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_, ticks_per_bit * 3);
+            TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_min_, ticks_per_bit * 3 - delta * 3);
+            TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_max_, ticks_per_bit * 3 + delta * 3);
+        }
+    }
+}
+
+void test_init_timings_manual_testing(void)
+{
+    uint32_t timer_frequency = 18000000 ;
+    bt = init_timings_(115200, timer_frequency); // bitrate 9600
+    // bit time 1`000`000`000 / 9600
+    // one timer tick time 1`000`000`000 / 72000000 
+    // TIM_ticks_per_bit_ = 156
+    // delta_timer_ticks_per_bit_ = 3 
+    TEST_ASSERT_EQUAL_INT(156, bt.TIM_ticks_per_bit_);
+    TEST_ASSERT_EQUAL_INT(bt.delta_timer_ticks_per_bit_, 3);
+    TEST_ASSERT_EQUAL_INT(bt.TIM_ticks_per_bit_min_, 156 - 3);
+    TEST_ASSERT_EQUAL_INT(bt.TIM_ticks_per_bit_max_, 156 + 3);
+    TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_, 468);
+    TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_min_, 468 - 9);
+    TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_max_, 468 + 9);
+}
+
+void test_init_delete_convert_sequence(void)
+{
+    converted_sequence* seq = init_converted_sequence(8);
+    TEST_ASSERT_NOT_NULL_MESSAGE(seq, "seq is not null");  
+    TEST_ASSERT_NOT_NULL_MESSAGE(seq->sequence_, " seq->sequence is null");
+    delete_converted_sequence(seq);
+  //  TEST_ASSERT_NULL_MESSAGE(seq->sequence_, " internal_pointer is null");
+  //  TEST_ASSERT_NULL_MESSAGE(seq, " seq is null");
+}
 void setUp(void) {}
 void tearDown(void) {}
 

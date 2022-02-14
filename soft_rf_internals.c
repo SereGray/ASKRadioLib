@@ -35,12 +35,12 @@ uint8_t bit_counter(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t inde
 // считаю что данные приходят младшим битом вперед
 // разворот битов из LSB в MSB
 // предпологается что таймер принял 6 + 6 бит
-converted_sequence convert_timer_sequence(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t* length, uint16_t* data_iterator)
+converted_sequence* convert_timer_sequence(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t* length, uint16_t* data_iterator)
 {
 	uint8_t start_ = tim_seq->sequence_iterator_;
 	// if the iterator points to the end
 	if (start_ == max_timer_buffer_length)return init_converted_sequence(0);
-	converted_sequence res = init_converted_sequence(*length);
+	converted_sequence* res = init_converted_sequence(*length);
 
 	// TODO: проверка на шум если длительность много меньше длительности бита - отсекаем
 
@@ -95,7 +95,7 @@ converted_sequence convert_timer_sequence(bit_time* bt, timer_receive_sequence* 
 		buffer_iterator_ -= 6;
 		if (halfword_iterator_ > 1)
 		{
-			res.sequence_[word_count_] = word_buffer_;
+			res->sequence_[word_count_] = word_buffer_;
 			word_count_ += 1;
 			halfword_iterator_ = 0;
 
@@ -106,7 +106,7 @@ converted_sequence convert_timer_sequence(bit_time* bt, timer_receive_sequence* 
 			}
 		}
 	}
-	res.words_ = word_count_;
+	res->words_ = word_count_;
 	tim_seq->sequence_iterator_ = 0; // reading sequence done
 	return res;
 }
@@ -162,21 +162,21 @@ void read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local
 		message = init_data_struct(max_data_length);
 	}
 
-	converted_sequence temp = convert_timer_sequence(&bt, local_buffer, &message->data_length_, &message->data_iterator_);
-
+	converted_sequence* temp = convert_timer_sequence(&bt, local_buffer, &message->data_length_, &message->data_iterator_);
+	//TODO: if converted_sequence is NULL
 	if (first_reading)
 	{
-		message = init_data_struct(temp.sequence_[0]);
+		message = init_data_struct(temp->sequence_[0]);
 	}
 
 	//copying data from sequence 
 	uint16_t sequence_iterator = 0;
 	for (uint16_t i = message->data_iterator_; i < message->data_length_; i++)
 	{
-		message->data_[i] = temp.sequence_[sequence_iterator];
+		message->data_[i] = temp->sequence_[sequence_iterator];
 		message->data_iterator_ = i;
 		sequence_iterator++;
-		if (sequence_iterator >= temp.length_) // if the current transmission has ended
+		if (sequence_iterator >= temp->length_) // if the current transmission has ended
 		{
 			return; // aborting data copying and resume in next transfer ( after next function call)
 		}
@@ -205,13 +205,24 @@ void remove_second_start_sequence(timer_receive_sequence* local_buffer)
 	}
 }
 
-converted_sequence init_converted_sequence(uint8_t len)
+converted_sequence* init_converted_sequence(uint8_t len)
 {
-	converted_sequence seq;
-	seq.sequence_ = malloc(len * sizeof(uint8_t));
-	seq.words_ = 0;
-	seq.length_ = len;
+	converted_sequence* seq = malloc(sizeof(converted_sequence));
+	if (seq == NULL) return NULL;
+	seq->sequence_ = malloc(len * sizeof(uint8_t));
+	if (seq->sequence_ == NULL) return NULL;
+	seq->words_ = 0;
+	seq->length_ = len;
 	return seq;
+}
+
+void delete_converted_sequence(converted_sequence* seq)
+{
+	if (seq != NULL) 
+	{
+		free(seq->sequence_);
+		free(seq);
+	}
 }
 
 data_full_msg* init_data_struct(uint8_t len)
