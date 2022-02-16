@@ -23,7 +23,7 @@ void add_bits_to_buffer(uint8_t bit, uint8_t* count, uint16_t* buff, uint8_t* it
 	*iterator += *count;
 }
 
-
+// no more than 6 bits in a row
 uint8_t bit_counter(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t index) {
 	uint8_t count_bit = 0;
 	count_bit = tim_seq->TIM_ticks_sequence_[index] / bt->TIM_ticks_per_bit_;  // TODO: 16 BIT TO 8 BIT
@@ -210,6 +210,7 @@ converted_sequence* init_converted_sequence(uint8_t len)
 	converted_sequence* seq = malloc(sizeof(converted_sequence));
 	if (seq == NULL) return NULL;
 	seq->sequence_ = malloc(len * sizeof(uint8_t));
+	for (uint8_t i = 0; i < len; i++) seq->sequence_[i] = 0;
 	if (seq->sequence_ == NULL) return NULL;
 	seq->words_ = 0;
 	seq->length_ = len;
@@ -231,6 +232,7 @@ data_full_msg* init_data_struct(uint8_t len)
 	data_full_msg* data = malloc(sizeof(data_full_msg));
 	if (data)
 	{
+		data->data_ = malloc(sizeof(uint8_t) * len);
 		data->data_length_ = len;
 		data->data_iterator_ = 0;
 		for (unsigned i = 0; i < data->data_length_; i++) data->data_[i] = 0;
@@ -239,4 +241,13 @@ data_full_msg* init_data_struct(uint8_t len)
 		return data;
 	}
 	return NULL;
+}
+
+void delete_data_struct(data_full_msg* msg)
+{
+	if (msg != NULL)
+	{
+		free(msg->data_);
+		free(msg);
+	}
 }

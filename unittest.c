@@ -5,6 +5,7 @@
 #include "unity.h"
 #include "soft_rf_internals.h"
 
+//------------------------FUNCTION-DECLARATION----------------------------
 void setUp(void);
 void tearDown(void);
 void test_FunctionUnderTest_should_ReturnFive(void);
@@ -16,20 +17,32 @@ void test_init_timings(void);
 void test_init_timings_all_bitrate_testing(void);
 void test_init_timings_manual_testing(void);
 void test_init_delete_convert_sequence(void);
+void test_init_delete_data_struct(void);
+void test_bit_counter_cycle(void);
 
+
+//----------------------------MAIN--------------------------------
 
 int main(void)
 {
     UNITY_BEGIN();
-    RUN_TEST(test_FunctionUnderTest_should_ReturnFive);
     RUN_TEST(test_convert_6to4);
     RUN_TEST(test_convert_4to6);
     RUN_TEST(test_init_timings);
     RUN_TEST(test_init_timings_all_bitrate_testing);
     RUN_TEST(test_init_timings_manual_testing);
     RUN_TEST(test_init_delete_convert_sequence);
+    RUN_TEST(test_init_delete_data_struct);
+    RUN_TEST(test_bit_counter_cycle);
     UNITY_END();
 }
+
+
+//------------------FUNCTION-DEFINITION---------------------------
+
+void setUp(void) {}
+void tearDown(void) {}
+
 
 void test_convert_6to4(void) 
 {
@@ -108,34 +121,50 @@ void test_init_timings_manual_testing(void)
 
 void test_init_delete_convert_sequence(void)
 {
-    converted_sequence* seq = init_converted_sequence(8);
+    uint8_t len = 8;
+    converted_sequence* seq = init_converted_sequence(len);
+    for (uint8_t i = 0; i < len; i++)
+    {
+        TEST_ASSERT_EQUAL(seq->sequence_[0], 0);
+    }
     TEST_ASSERT_NOT_NULL_MESSAGE(seq, "seq is not null");  
     TEST_ASSERT_NOT_NULL_MESSAGE(seq->sequence_, " seq->sequence is null");
     delete_converted_sequence(seq);
   //  TEST_ASSERT_NULL_MESSAGE(seq->sequence_, " internal_pointer is null");
   //  TEST_ASSERT_NULL_MESSAGE(seq, " seq is null");
 }
-void setUp(void) {}
-void tearDown(void) {}
 
-int FunctionUnderTest()
+void test_init_delete_data_struct(void)
 {
-    return 5;
+    uint8_t len = 8;
+    data_full_msg* msg = init_data_struct(len);
+    for (uint8_t i = 0; i < len; i++)
+    {
+        TEST_ASSERT_EQUAL(msg->data_[0], 0);
+    }
+    TEST_ASSERT_NOT_NULL_MESSAGE(msg, "msg is not null");
+    TEST_ASSERT_NOT_NULL_MESSAGE(msg->data_, " msg->data_ is null");
+    delete_data_struct(msg);
+    //  TEST_ASSERT_NULL_MESSAGE(seq->sequence_, " internal_pointer is null");
+    //  TEST_ASSERT_NULL_MESSAGE(seq, " seq is null");
 }
 
-void test_FunctionUnderTest_should_ReturnFive(void) {
-    TEST_ASSERT_EQUAL_INT(5, FunctionUnderTest());
-    TEST_ASSERT_EQUAL_INT(5, FunctionUnderTest()); //twice even!
+void test_bit_counter_cycle(void)
+{
+    bit_time bt = init_timings_(bitrate_[0], 72000000);
+    timer_receive_sequence seq;
+    seq.TIM_ticks_sequence_ = malloc(sizeof(uint16_t) * 8);
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        seq.TIM_ticks_sequence_[i] = 7500 * i; 
+        TEST_ASSERT_EQUAL(bit_counter(&bt,&seq, i),i);
+    }
+    free(seq.TIM_ticks_sequence_);
 }
 
-
-// Запуск программы: CTRL+F5 или меню "Отладка" > "Запуск без отладки"
-// Отладка программы: F5 или меню "Отладка" > "Запустить отладку"
-
-// Советы по началу работы 
-//   1. В окне обозревателя решений можно добавлять файлы и управлять ими.
-//   2. В окне Team Explorer можно подключиться к системе управления версиями.
-//   3. В окне "Выходные данные" можно просматривать выходные данные сборки и другие сообщения.
-//   4. В окне "Список ошибок" можно просматривать ошибки.
-//   5. Последовательно выберите пункты меню "Проект" > "Добавить новый элемент", чтобы создать файлы кода, или "Проект" > "Добавить существующий элемент", чтобы добавить в проект существующие файлы кода.
-//   6. Чтобы снова открыть этот проект позже, выберите пункты меню "Файл" > "Открыть" > "Проект" и выберите SLN-файл.
+// no more than 6 bits in a row
+// borderline bitrate test
+void test_bit_counter_more_(void)
+{
+    //TODO: this
+}
