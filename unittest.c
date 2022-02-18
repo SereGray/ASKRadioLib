@@ -5,6 +5,7 @@
 #include "unity.h"
 #include "soft_rf_internals.h"
 
+extern uint8_t starts_from_high_lvl_bit;
 //------------------------FUNCTION-DECLARATION----------------------------
 void setUp(void);
 void tearDown(void);
@@ -18,7 +19,10 @@ void test_init_timings_all_bitrate_testing(void);
 void test_init_timings_manual_testing(void);
 void test_init_delete_convert_sequence(void);
 void test_init_delete_data_struct(void);
-void test_bit_counter_cycle(void);
+void test_bit_counter_count_from_0_to_7_bits(void);
+void test_bit_counter_borderline_bitrate_test(void);
+void test_remove_second_start_sequence_from_low_lvl_bit(void);
+void test_remove_second_start_sequence_from_hight_lvl_bit(void);
 
 
 //----------------------------MAIN--------------------------------
@@ -33,7 +37,10 @@ int main(void)
     RUN_TEST(test_init_timings_manual_testing);
     RUN_TEST(test_init_delete_convert_sequence);
     RUN_TEST(test_init_delete_data_struct);
-    RUN_TEST(test_bit_counter_cycle);
+    RUN_TEST(test_bit_counter_count_from_0_to_7_bits);
+    RUN_TEST(test_bit_counter_borderline_bitrate_test);
+    RUN_TEST(test_remove_second_start_sequence_from_low_lvl_bit);
+    RUN_TEST(test_remove_second_start_sequence_from_hight_lvl_bit);
     UNITY_END();
 }
 
@@ -149,7 +156,7 @@ void test_init_delete_data_struct(void)
     //  TEST_ASSERT_NULL_MESSAGE(seq, " seq is null");
 }
 
-void test_bit_counter_cycle(void)
+void test_bit_counter_count_from_0_to_7_bits(void)
 {
     bit_time bt = init_timings_(bitrate_[0], 72000000);
     timer_receive_sequence seq;
@@ -164,7 +171,68 @@ void test_bit_counter_cycle(void)
 
 // no more than 6 bits in a row
 // borderline bitrate test
-void test_bit_counter_more_(void)
+void test_bit_counter_borderline_bitrate_test(void)
 {
-    //TODO: this
+    bit_time bt = init_timings_(bitrate_[5], 8000000); // one bit = 69,4444 timer ticks
+    timer_receive_sequence seq;
+    seq.TIM_ticks_sequence_ = malloc(sizeof(uint16_t) * 8);
+    seq.TIM_ticks_sequence_[0] = 69 * 6;
+    seq.TIM_ticks_sequence_[1] = 69 * 2;
+    seq.TIM_ticks_sequence_[2] = 69;
+    TEST_ASSERT_EQUAL(bit_counter(&bt, &seq, 0), 6);
+    TEST_ASSERT_EQUAL(bit_counter(&bt, &seq, 1), 2);
+    TEST_ASSERT_EQUAL(bit_counter(&bt, &seq, 2), 1);
+    bt = init_timings_(bitrate_[0], 8000000); // one bit = 833,3334 timer ticks
+    seq.TIM_ticks_sequence_[0] = 833 * 6;
+    seq.TIM_ticks_sequence_[1] = 833 * 2;
+    seq.TIM_ticks_sequence_[2] = 833;
+    TEST_ASSERT_EQUAL(bit_counter(&bt, &seq, 0), 6);
+    TEST_ASSERT_EQUAL(bit_counter(&bt, &seq, 1), 2);
+    TEST_ASSERT_EQUAL(bit_counter(&bt, &seq, 2), 1);
+}
+
+void test_remove_second_start_sequence_from_low_lvl_bit(void)
+{
+    bit_time bt = init_timings_(bitrate_[5], 8000000); // one bit = 69,4444 timer ticks
+    timer_receive_sequence seq;
+    seq.sequence_iterator_ = 0;
+    seq.sequence_length_ = 35;
+    seq.TIM_ticks_sequence_ = malloc(sizeof(uint16_t) * 35);
+    //  0x38,  0x38,   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
+    // 111000`111000`001101`001110`010011`010101`       010110`011001`   011010`   011100 
+    //               ^ here the message starts low
+    // 3,  3,  3,  5,  2,1,1,2,3, 2,1,2,2,1,1,1,1,1,1, 1,1,1,2,2,2,2,1, 1,2,1,1,1, 1,3,2
+    uint16_t sequence[] = { 3, 3, 3, 5, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2};
+    for (int i = 0; i < 35; i++)
+    {
+        seq.TIM_ticks_sequence_[i] = sequence[i] * 69;
+    }
+    seq.sequence_iterator_ += 2; // offset first start sequence
+    remove_second_start_sequence(&bt, &seq);
+    TEST_ASSERT_EQUAL(starts_from_high_lvl_bit, 0); // global varable testing
+    TEST_ASSERT_EQUAL(seq.TIM_ticks_sequence_[3], 138);
+    TEST_ASSERT_EQUAL(seq.sequence_iterator_ , 3);
+}
+
+void test_remove_second_start_sequence_from_hight_lvl_bit(void)
+{
+    bit_time bt = init_timings_(bitrate_[5], 8000000); // one bit = 69,4444 timer ticks
+    timer_receive_sequence seq;
+    seq.sequence_iterator_ = 0;
+    seq.sequence_length_ = 35;
+    seq.TIM_ticks_sequence_ = malloc(sizeof(uint16_t) * 35);
+    //  0x38,  0x38,   0x23,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
+    // 111000`111000`100011`001110`010011`010101`       010110`011001`   011010`   011100 
+    //               ^ here the message starts hight
+    // 3,  3, 3, 3,  1,3,2, 2,3, 2, 1,2,2, 1,1,1,1,1,1,  1,1,1,2,2, 2,2,1,  1,2,1,1,1,  1,3,2
+    uint16_t sequence[] = { 3, 3, 3, 3, 1, 3, 2, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
+    for (int i = 0; i < 35; i++)
+    {
+        seq.TIM_ticks_sequence_[i] = sequence[i] * 69;
+    }
+    seq.sequence_iterator_ += 2; // offset first start sequence
+    remove_second_start_sequence(&bt, &seq);
+    TEST_ASSERT_EQUAL(starts_from_high_lvl_bit, 1); // global variable testing
+    TEST_ASSERT_EQUAL(seq.TIM_ticks_sequence_[3], 207);
+    TEST_ASSERT_EQUAL(seq.sequence_iterator_, 4);
 }

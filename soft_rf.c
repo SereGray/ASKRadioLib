@@ -4,6 +4,8 @@
 
 extern uint8_t max_timer_buffer_length;
 extern uint8_t max_data_length;
+extern uint8_t started;
+
 
 data_full_msg* received_message = NULL;
 timer_receive_sequence input_timer_buff_one; // buffer for timer
@@ -44,14 +46,14 @@ void on_timer_count_interrupt() {
 
 				// if find start sequence reading data lenght and decoding
 				// the rest of the message will be decoded after a new interrupt
-				read_data_from_buffer(&received_message, &local_buffer,START_READ_DATA); // with reading & decoding data
+				read_data_from_buffer(&bt, &received_message, &local_buffer,START_READ_DATA); // with reading & decoding data
 				return; // 
 			}
 
 		}
 	}
 	// decryption of the remaining message
-	read_data_from_buffer(&received_message, &local_buffer, RESUME_READ_DATA); // if full message read - set started = 0
+	read_data_from_buffer(&bt, &received_message, &local_buffer, RESUME_READ_DATA); // if full message read - set started = 0
 	//TODO: Receive start on_Receive() funct
 }
 

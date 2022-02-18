@@ -54,8 +54,8 @@ static const uint8_t symbols[] =    // спизжено с virtualwire - данная таблица п
 };
 
 extern const uint8_t start_symbol; // 0x38 0b111000  12bit symbol <--- 2x
-static uint8_t started = 0;
-static uint8_t starts_from_high_lvl_bit = 0; // the starts_from_high_lvl_bit indicates which bit the sequence starts from hight lvl
+uint8_t started;
+uint8_t starts_from_high_lvl_bit ; // the starts_from_high_lvl_bit indicates which bit the sequence starts from hight lvl
 extern const uint32_t bitrate_[]; // bitrate
 
 uint8_t max_timer_buffer_length;
@@ -72,8 +72,8 @@ void convert_data_to_TIM_sequence(uint8_t* send_buffer, uint8_t* data, uint8_t* 
 uint8_t convert_6to4(uint8_t data_6bit_in); // return converted 4 bit , just "inline" it  // ok
 uint8_t convert_4to6(uint8_t data_4bit_in); // return converted 6 bit ,  // ok
 bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq);  // ok
-void read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading);
-void remove_second_start_sequence(timer_receive_sequence* local_buffer);
+void read_data_from_buffer(bit_time* bt, data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading);
+void remove_second_start_sequence(bit_time* bt, timer_receive_sequence* local_buffer);  // ok
 converted_sequence* init_converted_sequence(uint8_t len); // ok
 void delete_converted_sequence(converted_sequence* seq);  // ok
 data_full_msg* init_data_struct(uint8_t len); // ok

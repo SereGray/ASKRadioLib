@@ -2,7 +2,8 @@
 
 
 const uint32_t bitrate_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
-
+uint8_t started = 0;
+uint8_t starts_from_high_lvl_bit = 0; // the starts_from_high_lvl_bit indicates which bit the sequence starts from hight lvl
 const uint8_t start_symbol = 0x38;
 
 
@@ -153,18 +154,18 @@ bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
 	return bt;
 }
 
-void read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t first_reading)
+void read_data_from_buffer(bit_time* bt, data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t start_read_data)
 {
-	if (first_reading)
+	if (start_read_data)
 	{
-		remove_second_start_sequence(local_buffer); // offset sequence iterator
+		remove_second_start_sequence(bt,local_buffer); // offset sequence iterator
 		//message->data_length_ = MAX_DATA_LENGTH; // only for the first conversion, the data length is taken from the message after the first decoding secuence
 		message = init_data_struct(max_data_length);
 	}
 
-	converted_sequence* temp = convert_timer_sequence(&bt, local_buffer, &message->data_length_, &message->data_iterator_);
+	converted_sequence* temp = convert_timer_sequence(bt, local_buffer, &message->data_length_, &message->data_iterator_);
 	//TODO: if converted_sequence is NULL
-	if (first_reading)
+	if (start_read_data)
 	{
 		message = init_data_struct(temp->sequence_[0]);
 	}
@@ -184,24 +185,24 @@ void read_data_from_buffer(data_full_msg* message, timer_receive_sequence* local
 	started = 0;
 }
 
-void remove_second_start_sequence(timer_receive_sequence* local_buffer)
+void remove_second_start_sequence(bit_time* bt, timer_receive_sequence* local_buffer)
 {
 	// checking the second start symbol
 	uint16_t hight_lvl_time = local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_]; // the duration of first signal is the duration of hight level
 	uint16_t low_lvl_time = local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_ + 1];  // the duration of second signal is the duration of low level
 
-	if (hight_lvl_time > bt.start_bit_ticks_min_ && hight_lvl_time < bt.start_bit_ticks_max_ && low_lvl_time > bt.start_bit_ticks_min_ && low_lvl_time < bt.start_bit_ticks_max_)
+	if (hight_lvl_time > bt->start_bit_ticks_min_ && hight_lvl_time < bt->start_bit_ticks_max_ && low_lvl_time > bt->start_bit_ticks_min_ && low_lvl_time < bt->start_bit_ticks_max_)
 	{
 		//the next bit after the start sequence is "1"
 		starts_from_high_lvl_bit = 1;
 		local_buffer->sequence_iterator_ += 2; //  remove the start symbol from input buff
 	}
-	else if (hight_lvl_time > bt.start_bit_ticks_min_ && hight_lvl_time < bt.start_bit_ticks_max_ && low_lvl_time > bt.start_bit_ticks_min_ + bt.TIM_ticks_per_bit_min_)
+	else if (hight_lvl_time > bt->start_bit_ticks_min_ && hight_lvl_time < bt->start_bit_ticks_max_ && low_lvl_time > bt->start_bit_ticks_min_ + bt->TIM_ticks_per_bit_min_)
 	{
 		// the next bit after the start sequence is "0"
 		starts_from_high_lvl_bit = 0;
 		local_buffer->sequence_iterator_ += 1;               // remove higth lvl of the  start symbol
-		local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_] -= bt.start_bit_ticks_; //  remove low lvl of the second start symbol
+		local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_] -= bt->start_bit_ticks_; //  remove low lvl of the second start symbol
 	}
 }
 
