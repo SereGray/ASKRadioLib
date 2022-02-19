@@ -23,6 +23,7 @@ void test_bit_counter_count_from_0_to_7_bits(void);
 void test_bit_counter_borderline_bitrate_test(void);
 void test_remove_second_start_sequence_from_low_lvl_bit(void);
 void test_remove_second_start_sequence_from_hight_lvl_bit(void);
+void test_add_bits_to_buffer(void);
 
 
 //----------------------------MAIN--------------------------------
@@ -41,6 +42,7 @@ int main(void)
     RUN_TEST(test_bit_counter_borderline_bitrate_test);
     RUN_TEST(test_remove_second_start_sequence_from_low_lvl_bit);
     RUN_TEST(test_remove_second_start_sequence_from_hight_lvl_bit);
+    RUN_TEST(test_add_bits_to_buffer);
     UNITY_END();
 }
 
@@ -235,4 +237,38 @@ void test_remove_second_start_sequence_from_hight_lvl_bit(void)
     TEST_ASSERT_EQUAL(starts_from_high_lvl_bit, 1); // global variable testing
     TEST_ASSERT_EQUAL(seq.TIM_ticks_sequence_[3], 207);
     TEST_ASSERT_EQUAL(seq.sequence_iterator_, 4);
+}
+
+void test_add_bits_to_buffer(void)
+{
+    uint16_t buffer_ = { 0 };  // buffer to fill 6 bits 
+    uint8_t buffer_iterator_ = 0; 
+    uint8_t count_0_1 = 1, count_1_1 = 3, count_0_2 = 2; // 1,3,2 - 011100 0x1c
+    add_bits_to_buffer(BIT_0, &count_0_1, &buffer_, &buffer_iterator_); 
+    TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0, " first test - buffer is zero");
+    TEST_ASSERT_EQUAL(buffer_iterator_, 1);
+    add_bits_to_buffer(BIT_1, &count_1_1, &buffer_, &buffer_iterator_);
+    TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0xE, " second test - buffer is 0b0000`0000`0000`1110 (0xE or 14");
+    TEST_ASSERT_EQUAL(buffer_iterator_, 4);
+    add_bits_to_buffer(BIT_0, &count_0_2, &buffer_, &buffer_iterator_);
+    TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0xE, " third test - buffer is 0b0000`0000`0000`1110 (0xE or 14");
+    TEST_ASSERT_EQUAL(buffer_iterator_, 6);
+
+    // add next 6-bit word
+    uint8_t count_0_3 = 1, count_1_2 = 2, count_0_4 = 1, count_1_3 = 1, count_0_5 = 1; // 1,2,1,1,1 - 011010 0x1a
+    add_bits_to_buffer(BIT_0, &count_0_3, &buffer_, &buffer_iterator_);
+    TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0xE, " fourth test - 0b0000`0000`0000`1110 (0xE or 14");
+    TEST_ASSERT_EQUAL(buffer_iterator_, 7);
+    add_bits_to_buffer(BIT_1, &count_1_2, &buffer_, &buffer_iterator_);
+    TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0x18E, " fifth test - buffer is 0b0000`0001`1000`1110 (0x18E or 398");
+    TEST_ASSERT_EQUAL(buffer_iterator_, 9);
+    add_bits_to_buffer(BIT_0, &count_0_4, &buffer_, &buffer_iterator_);
+    TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0x18E, " sixth test - buffer is 0b0000`0001`1000`1110 (0x18E or 398");
+    TEST_ASSERT_EQUAL(buffer_iterator_, 10);
+    add_bits_to_buffer(BIT_1, &count_1_3, &buffer_, &buffer_iterator_);
+    TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0x58E, " seventh test - buffer is 0b0000`0101`1000`1110 (0x58E or 1422");
+    TEST_ASSERT_EQUAL(buffer_iterator_, 11);
+    add_bits_to_buffer(BIT_0, &count_0_5, &buffer_, &buffer_iterator_);
+    TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0x58E, " eight test - buffer is 0b0000`0101`1000`1110 (0x58E or 1422");
+    TEST_ASSERT_EQUAL(buffer_iterator_, 12);
 }

@@ -18,9 +18,16 @@ void add_bits_to_buffer(uint8_t bit, uint8_t* count, uint16_t* buff, uint8_t* it
 	}
 
 	// if bit = BIT_1
-
+	uint8_t value = 0;
+	uint8_t count_local = *count;
+	while (count_local > 0)
+	{
+		value = value << 1;
+		value++;
+		count_local --;
+	}
 	// add to buffer
-	*buff = *buff | ((2 * (*count) + 1) << *iterator);
+	*buff = *buff | value << *iterator;
 	*iterator += *count;
 }
 
@@ -30,6 +37,33 @@ uint8_t bit_counter(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t inde
 	count_bit = tim_seq->TIM_ticks_sequence_[index] / bt->TIM_ticks_per_bit_;  // TODO: 16 BIT TO 8 BIT
 	if (tim_seq->TIM_ticks_sequence_[index] / bt->TIM_ticks_per_bit_min_ > count_bit) ++count_bit; // checking the remainder
 	return count_bit;
+}
+
+void convert_from_buffer(uint16_t* buffer_, uint8_t* buffer_iterator_, converted_sequence* res, uint16_t* length, uint16_t* data_iterator)
+{
+	uint8_t word_buffer_ = 0, word_count_ = res->words_; // buffer padding by 4 bits, (each 6 bits convert to 4 bits )
+	uint8_t halfword_iterator_ = 0; // iterator need for checking 4 bits overflow 
+	uint16_t mask = 0b0000000000111111; // 6 bit mask 0000 0000 0011 1111
+	while (&buffer_iterator_ > 5)
+	{
+		word_buffer_ = convert_6to4((uint8_t)(mask & *buffer_)) << (halfword_iterator_ * 4);
+		halfword_iterator_ += 1;
+		buffer_ = *buffer_ >> 6;
+		buffer_iterator_ -= 6;
+		if (halfword_iterator_ > 1)
+		{
+			res->sequence_[word_count_] = word_buffer_;
+			word_count_ += 1;
+			halfword_iterator_ = 0;
+
+			*data_iterator += 1;
+			if (*data_iterator > *length)
+			{
+				break; // the end of the message
+			}
+		}
+	}
+	res->words_ = word_count_;
 }
 
 // Decoding
@@ -47,9 +81,7 @@ converted_sequence* convert_timer_sequence(bit_time* bt, timer_receive_sequence*
 
 	uint16_t buffer_ = { 0 };  // buffer to fill 6 bits 
 	uint8_t buffer_iterator_ = 0; //the buffer_iterator_ that counts the bits writen to the buffer_ 
-	uint8_t word_buffer_ = 0; // buffer padding by 4 bits, (each 6 bits convert to 4 bits )
-	uint8_t halfword_iterator_ = 0; // iterator need for checking 4 bits overflow 
-	uint8_t count_1 = 0, count_0 = 0, word_count_ = 0; // count bits with "1", "0" and count decoded WORD (8bits)
+	uint8_t count_1 = 0, count_0 = 0; // count bits with "1", "0" and count decoded WORD (8bits)
 
 
 	// поиск
@@ -83,31 +115,9 @@ converted_sequence* convert_timer_sequence(bit_time* bt, timer_receive_sequence*
 			add_bits_to_buffer(BIT_0, &count_0, &buffer_, &buffer_iterator_);
 			add_bits_to_buffer(BIT_1, &count_1, &buffer_, &buffer_iterator_);
 		}
+		// decoding from buffer to word_buffer	
+		if (&buffer_iterator_ > 5) convert_from_buffer(&buffer_, &buffer_iterator_, res, length, data_iterator);
 	}
-
-	// decoding from buffer to word_buffer
-	uint16_t mask = 0b0000000000111111; // 6 bit mask 0000 0000 0011 1111
-
-	while (&buffer_iterator_ > 5)
-	{
-		word_buffer_ = convert_6to4((uint8_t)(mask & buffer_)) << (halfword_iterator_ * 4);
-		halfword_iterator_ += 1;
-		buffer_ = buffer_ >> 6;
-		buffer_iterator_ -= 6;
-		if (halfword_iterator_ > 1)
-		{
-			res->sequence_[word_count_] = word_buffer_;
-			word_count_ += 1;
-			halfword_iterator_ = 0;
-
-			*data_iterator += 1;
-			if (*data_iterator > *length)
-			{
-				break; // the end of the message
-			}
-		}
-	}
-	res->words_ = word_count_;
 	tim_seq->sequence_iterator_ = 0; // reading sequence done
 	return res;
 }
