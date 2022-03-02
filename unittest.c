@@ -24,6 +24,7 @@ void test_bit_counter_borderline_bitrate_test(void);
 void test_remove_second_start_sequence_from_low_lvl_bit(void);
 void test_remove_second_start_sequence_from_hight_lvl_bit(void);
 void test_add_bits_to_buffer(void);
+void test_convert_from_buffer(void);
 
 
 //----------------------------MAIN--------------------------------
@@ -43,6 +44,7 @@ int main(void)
     RUN_TEST(test_remove_second_start_sequence_from_low_lvl_bit);
     RUN_TEST(test_remove_second_start_sequence_from_hight_lvl_bit);
     RUN_TEST(test_add_bits_to_buffer);
+    RUN_TEST(test_convert_from_buffer);
     UNITY_END();
 }
 
@@ -138,6 +140,8 @@ void test_init_delete_convert_sequence(void)
     }
     TEST_ASSERT_NOT_NULL_MESSAGE(seq, "seq is not null");  
     TEST_ASSERT_NOT_NULL_MESSAGE(seq->sequence_, " seq->sequence is null");
+    TEST_ASSERT_EQUAL(seq->words_, 0);
+    TEST_ASSERT_EQUAL(seq->length_, len);
     delete_converted_sequence(seq);
   //  TEST_ASSERT_NULL_MESSAGE(seq->sequence_, " internal_pointer is null");
   //  TEST_ASSERT_NULL_MESSAGE(seq, " seq is null");
@@ -271,4 +275,19 @@ void test_add_bits_to_buffer(void)
     add_bits_to_buffer(BIT_0, &count_0_5, &buffer_, &buffer_iterator_);
     TEST_ASSERT_EQUAL_MESSAGE(buffer_, 0x58E, " eight test - buffer is 0b0000`0101`1000`1110 (0x58E or 1422");
     TEST_ASSERT_EQUAL(buffer_iterator_, 12);
+}
+
+void test_convert_from_buffer(void)
+{
+    uint16_t buffer = { 0x58E };  // 0b0000`0101`1000`1110 ---- 22(0x16) 14(0xe)
+    uint8_t buffer_iterator = 12;
+    uint16_t length = 1;
+    converted_sequence* seq = init_converted_sequence(32);
+    data_full_msg *message = init_data_struct(max_data_length);
+
+    convert_from_buffer(&buffer, &buffer_iterator, seq, &length, &message->data_iterator_);
+    TEST_ASSERT_EQUAL_MESSAGE(seq->sequence_[0], 20, " message data[0]");
+//    TEST_ASSERT_EQUAL_MESSAGE(message->data_[1], 4, " message data[1]");
+    delete_data_struct(message);
+    delete_converted_sequence(seq);
 }
