@@ -8,12 +8,13 @@ const uint8_t start_symbol = 0x38;
 
 
 
-void add_bits_to_buffer(uint8_t bit, uint8_t* count, uint16_t* buff, uint8_t* iterator) {
+void add_bits_to_buffer(uint8_t bit, uint8_t* count, uint32_t* buff, uint8_t* iterator) {
 	// перевожу из "1" и "0" в буффер
 
 	if (!bit) // if bit = BIT_0
 	{
 		*iterator += *count;
+		*buff = (*buff << *count);
 		return;
 	}
 
@@ -27,7 +28,8 @@ void add_bits_to_buffer(uint8_t bit, uint8_t* count, uint16_t* buff, uint8_t* it
 		count_local --;
 	}
 	// add to buffer
-	*buff = *buff | value << *iterator;
+	//TODO убрать смещение value смещать на count
+	*buff = (*buff << *count) | value ;
 	*iterator += *count;
 }
 
@@ -40,32 +42,54 @@ uint8_t bit_counter(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t inde
 }
 
 // call from  convert_timer_sequence()
-void convert_from_buffer(uint16_t* buffer_, uint8_t* buffer_iterator_, converted_sequence* res, uint16_t* data_length, uint16_t* data_iterator)
+void convert_from_buffer(uint32_t* buffer_, uint8_t* buffer_iterator_, converted_sequence* res, uint16_t* data_length, uint16_t* data_iterator)
 {
-	uint8_t word_buffer_ = 0, word_count_ = res->words_; // buffer padding by 4 bits, (each 6 bits convert to 4 bits )
-	uint8_t halfword_iterator_ = 0; // iterator need for checking 4 bits overflow 
+	uint8_t word_count_ = res->words_; //
 	uint16_t mask = 0b0000000000111111; // 6 bit mask 0000 0000 0011 1111
-	while (*buffer_iterator_ > 5)
+	if (*buffer_iterator_ >= 12)
 	{
-		uint8_t converted_halfword = convert_6to4((uint8_t) *buffer_ & mask);
-		word_buffer_ = (word_buffer_ << (halfword_iterator_ * 4)) + converted_halfword;
-		halfword_iterator_ += 1;
-		*buffer_ = *buffer_ >> 6;
-		buffer_iterator_ -= 6;
-		if (halfword_iterator_ > 1)
+		while (*buffer_iterator_ > 5)
 		{
-			res->sequence_[word_count_] = word_buffer_;
-			word_count_ += 1;
-			halfword_iterator_ = 0;
-			word_buffer_ = 0;
-			*data_iterator += 1; // TODO: сделать локальную копию ?
-			if (*data_iterator >= *data_length)
+			uint32_t local_buffer = *buffer_;
+			// take left part of the buffer_
+			if (*buffer_iterator_ > 6)
 			{
-				break; // the end of the message
+				local_buffer = local_buffer >> (*buffer_iterator_ - 6);
+			}
+			uint8_t converted_halfword = convert_6to4((uint8_t)(local_buffer & mask)); // TODO: нужно брать левую часть и сдвигать влево !!!
+
+			// there could be a reversal of lsb to msb
+			res->word_buffer_ = (res->word_buffer_ << (res->halfword_iterator_ * 4)) + converted_halfword; // paste to right
+			res->halfword_iterator_ += 1;
+			//*buffer_ = *buffer_ >> 6;
+			//// zeroing used data in the buffer_     NOT NECESSARY!!!
+			//uint32_t zero_mask = 0xFFFFFF00;
+			//if (*buffer_iterator_ > 6)
+			//{
+			//	local_buffer = local_buffer >> (*buffer_iterator_ - 6);
+			//}
+			//*buffer_ = ;
+			*buffer_iterator_ -= 6;
+			if (res->halfword_iterator_ > 1)
+			{
+				res->sequence_[word_count_] = res->word_buffer_;
+				word_count_ += 1;
+				res->halfword_iterator_ = 0;
+				res->word_buffer_ = 0;
+				*data_iterator += 1; // TODO: сделать локальную копию ?
+				if (*data_iterator >= *data_length)
+				{
+					break; // the end of the message
+				}
 			}
 		}
 	}
 	res->words_ = word_count_;
+	// DEBUG bookmark
+	uint32_t countt = 0;
+	if (word_count_ > 2) {
+		++countt;
+	}
 }
 
 // Decoding
@@ -82,7 +106,7 @@ converted_sequence* convert_timer_sequence(bit_time* bt, timer_receive_sequence*
 
 	// TODO: проверка на шум если длительность много меньше длительности бита - отсекаем
 
-	uint16_t buffer_ = { 0 };  // FIFO buffer to fill 6 bits 
+	uint32_t buffer_ = { 0 };  // FIFO buffer to fill 6 bits 
 	uint8_t buffer_iterator_ = 0; //the buffer_iterator_ that counts the bits writen to the buffer_ 
 	uint8_t count_1 = 0, count_0 = 0; // count bits with "1", "0" and count decoded WORD (8bits)
 
@@ -224,13 +248,18 @@ void remove_second_start_sequence(bit_time* bt, timer_receive_sequence* local_bu
 converted_sequence* init_converted_sequence(uint8_t len)
 {
 	converted_sequence* seq = malloc(sizeof(converted_sequence));
-	if (seq == NULL) return NULL;
-	seq->sequence_ = malloc(len * sizeof(uint8_t));
-	for (uint8_t i = 0; i < len; i++) seq->sequence_[i] = 0;
-	if (seq->sequence_ == NULL) return NULL;
-	seq->words_ = 0;
-	seq->length_ = len;
-	return seq;
+	if (seq)
+	{
+		seq->sequence_ = malloc(len * sizeof(uint8_t));
+		for (uint8_t i = 0; i < len; i++) seq->sequence_[i] = 0;
+		if (seq->sequence_ == NULL) return NULL;
+		seq->words_ = 0;
+		seq->length_ = len;
+		seq->word_buffer_ = 0;
+		seq->halfword_iterator_ = 0;
+		return seq;
+	}
+	return NULL;
 }
 
 void delete_converted_sequence(converted_sequence* seq)
@@ -251,7 +280,7 @@ data_full_msg* init_data_struct(uint8_t len)
 		data->data_ = malloc(sizeof(uint8_t) * len);
 		data->data_length_ = len;
 		data->data_iterator_ = 0;
-		for (unsigned i = 0; i < data->data_length_; i++) data->data_[i] = 0;
+		for (uint8_t i = 0; i < data->data_length_; i++) data->data_[i] = 0;
 		data->CRC_message_[0] = 0;
 		data->CRC_message_[1] = 0;
 		return data;
@@ -265,5 +294,28 @@ void delete_data_struct(data_full_msg* msg)
 	{
 		free(msg->data_);
 		free(msg);
+	}
+}
+
+timer_receive_sequence* init_receive_sequence(uint8_t len)
+{
+	timer_receive_sequence* seq = malloc(sizeof(timer_receive_sequence));
+	if (seq)
+	{
+		seq->TIM_ticks_sequence_ = malloc(sizeof(uint16_t) * len);
+		seq->sequence_iterator_ = 0;
+		seq->sequence_length_ = len;
+		for (uint8_t i = 0; i < seq->sequence_length_; i++) seq->TIM_ticks_sequence_[i] = 0;
+		return seq;
+	}
+	return NULL;
+}
+
+void delete_receive_sequence(timer_receive_sequence* seq)
+{
+	if (seq != NULL)
+	{
+		free(seq->TIM_ticks_sequence_);
+		free(seq);
 	}
 }
