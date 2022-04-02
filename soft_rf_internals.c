@@ -1,6 +1,6 @@
 #include"soft_rf_internals.h"
 
-
+symbol_bit_sequence sym_to_TIM[16];
 const uint32_t bitrate_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
 uint8_t started = 0;
 uint8_t starts_from_high_lvl_bit = 0; // the starts_from_high_lvl_bit indicates which bit the sequence starts from hight lvl
@@ -34,7 +34,7 @@ void add_bits_to_buffer(uint8_t bit, uint8_t* count, uint32_t* buff, uint8_t* it
 }
 
 // no more than 6 bits in a row
-uint8_t bit_counter(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t index) {
+uint8_t bit_counter(bit_time* bt, TIM_sequence* tim_seq, uint16_t index) {
 	uint8_t count_bit = 0;
 	count_bit = tim_seq->TIM_ticks_sequence_[index] / bt->TIM_ticks_per_bit_;  // TODO: 16 BIT TO 8 BIT
 	if (tim_seq->TIM_ticks_sequence_[index] / bt->TIM_ticks_per_bit_min_ > count_bit) ++count_bit; // checking the remainder
@@ -97,7 +97,7 @@ void convert_from_buffer(uint32_t* buffer_, uint8_t* buffer_iterator_, converted
 // разворот битов из LSB в MSB
 // предпологается что таймер принял 6 + 6 бит
 // call from  read_data_from_buffer()
-converted_sequence* convert_timer_sequence(bit_time* bt, timer_receive_sequence* tim_seq, uint16_t* length, uint16_t* data_iterator)
+converted_sequence* convert_timer_sequence(bit_time* bt, TIM_sequence* tim_seq, uint16_t* length, uint16_t* data_iterator)
 {
 	uint8_t start_ = tim_seq->sequence_iterator_;
 	// if the iterator points to the end
@@ -150,13 +150,58 @@ converted_sequence* convert_timer_sequence(bit_time* bt, timer_receive_sequence*
 	return res;
 }
 
-void convert_data_to_TIM_sequence(uint8_t* send_buffer, uint8_t* data, uint8_t* data_length, uint16_t* data_iterator)
-{
-	//TODO: there
-	for (uint8_t i = 0; i < data_length; i++)
-	{
 
+//TODO: test first
+TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, uint16_t* data_iterator, bit_time *bt)
+{
+	uint32_t length_numbers_of_symbols_arr = sizeof(uint8_t) * (*data_length) * 2; // converting 4 to 6 s uses 2 times the memory
+	uint8_t *numbers_of_symbols_arr = malloc(length_numbers_of_symbols_arr);
+	// convert 4 to 6
+	for (uint8_t i = *data_iterator; i < *data_length; i++)
+	{
+		numbers_of_symbols_arr[i*2] = data[i]>>4; // number in "symbols" array of left part (4 bit) of data 
+		numbers_of_symbols_arr[i * 2 + 1] = data[i] & 0b00001111; // number in "symbols" array of right part (4bit) of data
+		*data_iterator += 1;
+	//	transmit_sequence[i*2] = convert_4to6(*data>>4); // left part (4 bit) of data 
+	//	transmit_sequence[i * 2 + 1] = convert_4to6(*data & 0b00001111); // right part (4bit) of data
 	}
+	// get length of sequence
+	uint16_t length_of_sequence = get_length_of_TIM_sequence(numbers_of_symbols_arr, length_numbers_of_symbols_arr);
+	TIM_sequence *transmit_sequence = init_TIM_sequence(length_of_sequence);
+	// convert to TIM duration using symbol_bit_sequenc
+	// first elem
+	for (uint8_t i = 0; i < sym_to_TIM[numbers_of_symbols_arr[0]].length; i++)
+	{
+		transmit_sequence->TIM_ticks_sequence_[i] = sym_to_TIM[numbers_of_symbols_arr[*data_iterator]].data[i];
+		transmit_sequence->sequence_iterator_ += 1;
+	}
+	*data_iterator += 1;
+	//  copy values
+	for (uint8_t i = *data_iterator; i < length_numbers_of_symbols_arr; i++)
+	{
+		//  copy first value
+		uint8_t last_lvl = sym_to_TIM[numbers_of_symbols_arr[i - 1]].start_end_lvl_;
+		uint8_t curr_lvl = sym_to_TIM[numbers_of_symbols_arr[i]].start_end_lvl_;
+		if ((last_lvl >= 2 && (curr_lvl % 2 > 0))|| (last_lvl < 2 && curr_lvl % 2 == 0 )) 		//if last bits and first bit of next micro sequence is same
+		{
+			
+			transmit_sequence->TIM_ticks_sequence_[transmit_sequence->sequence_iterator_ -1] += sym_to_TIM[numbers_of_symbols_arr[i]].data[0];
+		}
+		else
+		{
+			transmit_sequence->TIM_ticks_sequence_[transmit_sequence->sequence_iterator_] = sym_to_TIM[numbers_of_symbols_arr[i]].data[0];
+			transmit_sequence->sequence_iterator_ += 1;
+		}
+		// copy remaining values
+		for (uint8_t j = 1; j < sym_to_TIM[numbers_of_symbols_arr[j]].length; j++)
+		{
+			transmit_sequence->TIM_ticks_sequence_[transmit_sequence->sequence_iterator_] = sym_to_TIM[numbers_of_symbols_arr[i]].data[j];
+			transmit_sequence->sequence_iterator_ += 1;
+		}
+	}
+	transmit_sequence->sequence_length_ = transmit_sequence->sequence_iterator_;
+	transmit_sequence->sequence_iterator_ = 0;
+	free(numbers_of_symbols_arr);
 }
 
 uint8_t convert_6to4(uint8_t data_6bit_in)
@@ -192,8 +237,30 @@ bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq)
 	return bt;
 }
 
+
+// call on convert_data_to_TIM_sequence
+// take array of numbers of symbols and array lenght
+uint16_t get_length_of_TIM_sequence(uint8_t* numbers_of_symbols_arr, uint32_t len)  
+{
+	uint16_t res = 0;
+	//counting
+	res += sym_to_TIM[numbers_of_symbols_arr[0]].length;
+	for (uint16_t i = 1; i < len; i++)
+	{
+		res += sym_to_TIM[numbers_of_symbols_arr[i]].length;
+		// if the current symbol has the same start level as the previous symbol's end level, then lower res
+		uint8_t last_lvl = sym_to_TIM[numbers_of_symbols_arr[i - 1]].start_end_lvl_;
+		uint8_t curr_lvl = sym_to_TIM[numbers_of_symbols_arr[i]].start_end_lvl_;
+		if ((last_lvl >= 2 && (curr_lvl % 2 > 0)) || (last_lvl < 2 && curr_lvl % 2 == 0)) 		
+		{
+			res -= 1;
+		}
+	}
+	return res;
+}
+
 //call on on_timer_count_interrupt()
-void read_data_from_buffer(bit_time* bt, data_full_msg* message, timer_receive_sequence* local_buffer, uint8_t start_read_data)
+void read_data_from_buffer(bit_time* bt, data_full_msg* message, TIM_sequence* local_buffer, uint8_t start_read_data)
 {
 	if (start_read_data)
 	{
@@ -224,7 +291,7 @@ void read_data_from_buffer(bit_time* bt, data_full_msg* message, timer_receive_s
 	started = 0;
 }
 
-void remove_second_start_sequence(bit_time* bt, timer_receive_sequence* local_buffer)
+void remove_second_start_sequence(bit_time* bt, TIM_sequence* local_buffer)
 {
 	// checking the second start symbol
 	uint16_t hight_lvl_time = local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_]; // the duration of first signal is the duration of hight level
@@ -242,6 +309,34 @@ void remove_second_start_sequence(bit_time* bt, timer_receive_sequence* local_bu
 		starts_from_high_lvl_bit = 0;
 		local_buffer->sequence_iterator_ += 1;               // remove higth lvl of the  start symbol
 		local_buffer->TIM_ticks_sequence_[local_buffer->sequence_iterator_] -= bt->start_bit_ticks_; //  remove low lvl of the second start symbol
+	}
+}
+
+void init_symbols_to_TIM_sequence(symbol_bit_sequence *sym_bit_seq, uint8_t length, bit_time* bt)
+{
+	for (int i = 0; i < length; i++)
+	{
+		sym_bit_seq[i].start_end_lvl_ = 1 & symbols[i] + 2 * (1 & (symbols[i] >> 7)); // 1 * first 
+		uint8_t temp_data = symbols[i];
+		uint8_t curr_lvl = temp_data & 1 ; // last right bit 
+		uint8_t count_bit = 0;
+		sym_bit_seq[i].length = 0;
+
+		// counting bits
+		for(int y = 1; y < 8; y++)
+		{
+			count_bit++;
+			if (curr_lvl != (temp_data >> y) & 1)
+			{
+				sym_bit_seq[i].data[sym_bit_seq[i].length] = count_bit;
+				count_bit = 0;
+				sym_bit_seq[i].length += 1;
+			}
+		}
+		for(int y = 0; y < sym_bit_seq[i].length; y++)
+		{
+			sym_bit_seq[i].data[y] *= bt->TIM_ticks_per_bit_;
+		}
 	}
 }
 
@@ -297,9 +392,9 @@ void delete_data_struct(data_full_msg* msg)
 	}
 }
 
-timer_receive_sequence* init_receive_sequence(uint8_t len)
+TIM_sequence* init_TIM_sequence(uint8_t len)
 {
-	timer_receive_sequence* seq = malloc(sizeof(timer_receive_sequence));
+	TIM_sequence* seq = malloc(sizeof(TIM_sequence));
 	if (seq)
 	{
 		seq->TIM_ticks_sequence_ = malloc(sizeof(uint16_t) * len);
@@ -311,7 +406,7 @@ timer_receive_sequence* init_receive_sequence(uint8_t len)
 	return NULL;
 }
 
-void delete_receive_sequence(timer_receive_sequence* seq)
+void delete_receive_sequence(TIM_sequence* seq)
 {
 	if (seq != NULL)
 	{

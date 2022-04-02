@@ -8,8 +8,8 @@ extern uint8_t started;
 
 
 data_full_msg* received_message = NULL;
-timer_receive_sequence input_timer_buff_one; // buffer for timer
-timer_receive_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
+TIM_sequence input_timer_buff_one; // buffer for timer
+TIM_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
 
 
 
@@ -20,13 +20,14 @@ void init_rf() {
 	max_timer_buffer_length = MAX_TIMER_BUFFER_LENGTH;
 		//const uint8_t max_data_length_ = 27; // 27 byte data + 1 byte data lenght + 2 byte CRC
 	max_data_length = MAX_DATA_LENGTH;
+	init_symbols_to_TIM_sequence(&sym_to_TIM, 16, &bt); // TODO:test !
 }
 
 
 
 void on_timer_count_interrupt() {
 	// copying the input buffer to local copy, the input buffer can be overwritten
-	timer_receive_sequence local_buffer;  
+	TIM_sequence local_buffer;  
 	local_buffer = input_timer_buff_one;
 
 	//TODO: replace DMA address timer to another input buffer after copying
@@ -57,7 +58,8 @@ void on_timer_count_interrupt() {
 	//TODO: Receive start on_Receive() funct
 }
 
-void send_data(uint8_t* data, uint8_t data_length)
+//TODO: проверить длину передачи (возможно выход за границы буфера) т к при переводе из 4+4 бита в 6+6 бит увеличивается длина сообщения
+void send_8_data(uint8_t* data, uint8_t data_length)
 {
 	uint16_t data_iterator = 0;
 	uint8_t send_buffer[MAX_TIMER_BUFFER_LENGTH] = { 0 };
@@ -65,8 +67,9 @@ void send_data(uint8_t* data, uint8_t data_length)
 	send_buffer[0] = 0x38;
 	send_buffer[1] = 0x38;
 	//  convert data from 8 bit to 6+6 bit (4to6)
-	convert_data_to_TIM_sequence(&send_buffer, data, data_length, &data_iterator);
+	convert_data_to_TIM_sequence(data, data_length, &data_iterator,&bt);
 	// TODO: add CRC
+	// TODO: add length
 	// TODO: start transmitting
 	set_timer_to_start();
 }
