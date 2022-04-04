@@ -6,6 +6,7 @@
  * 
  * Specification
  * 
+ * 36 bit + "0x38" + "0x38" + "data" + "CRC"
  * Неблокирующий прием и переда данных (преемущественно аппаратно)
  * Входящой сигнал - последовательность количества тиков таймера
  *      считаем что длительность первого сигнала - это длительность "1" (нормальное состояние входа соответствует "0")
@@ -95,6 +96,7 @@
 
 //PUBLIC FUNCTIONS
 void on_timer_count_interrupt();
+void on_transmit();
 
 void send_8_data(uint8_t* data, uint8_t data_length);
 void init_rf(); // init radio 

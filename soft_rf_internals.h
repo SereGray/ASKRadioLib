@@ -65,6 +65,7 @@ static const uint8_t symbols[] =    // спизжено с virtualwire - данная таблица п
 extern symbol_bit_sequence sym_to_TIM[];
 extern const uint8_t start_symbol; // 0x38 0b111000  12bit symbol <--- 2x
 uint8_t started;
+uint8_t transmiting;
 uint8_t starts_from_high_lvl_bit ; // the starts_from_high_lvl_bit indicates which bit the sequence starts from hight lvl
 extern const uint32_t bitrate_[]; // bitrate
 
@@ -82,6 +83,8 @@ converted_sequence* convert_timer_sequence(bit_time* bt, TIM_sequence* timers_se
 TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, uint16_t* data_iterator, bit_time* bt);
 uint8_t convert_6to4(uint8_t data_6bit_in); // return converted 4 bit , just "inline" it  // ok
 uint8_t convert_4to6(uint8_t data_4bit_in); // return converted 6 bit ,  // ok
+void copy_intro_start_seq_to_transmit_buffer(uint16_t *output_timer_buffer, bit_time *bt);
+void copy_to_transmit_buffer(uint16_t* output_timer_buffer,uint8_t offset,TIM_sequence *message_TIM_seq);
 bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq);  // ok
 uint16_t get_length_of_TIM_sequence(uint8_t *numbers_of_symbols_arr, uint32_t len);
 void read_data_from_buffer(bit_time* bt, data_full_msg* message, TIM_sequence* local_buffer, uint8_t first_reading);

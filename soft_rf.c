@@ -5,11 +5,13 @@
 extern uint8_t max_timer_buffer_length;
 extern uint8_t max_data_length;
 extern uint8_t started;
+extern uint8_t transmiting;
 
 
 data_full_msg* received_message = NULL;
 TIM_sequence input_timer_buff_one; // buffer for timer
 TIM_sequence input_timer_buff_two; // buffer for timer to write input while input_timer_buff_one is decoding and vice versa
+uint16_t* output_timer_buffer;
 
 
 
@@ -58,6 +60,12 @@ void on_timer_count_interrupt() {
 	//TODO: Receive start on_Receive() funct
 }
 
+void on_transmit()
+{
+	free(output_timer_buffer);
+	transmiting = 0;
+}
+
 //TODO: проверить длину передачи (возможно выход за границы буфера) т к при переводе из 4+4 бита в 6+6 бит увеличивается длина сообщения
 void send_8_data(uint8_t* data, uint8_t data_length)
 {
@@ -67,11 +75,18 @@ void send_8_data(uint8_t* data, uint8_t data_length)
 	send_buffer[0] = 0x38;
 	send_buffer[1] = 0x38;
 	//  convert data from 8 bit to 6+6 bit (4to6)
-	convert_data_to_TIM_sequence(data, data_length, &data_iterator,&bt);
+	TIM_sequence *message_TIM_seq = convert_data_to_TIM_sequence(data, data_length, &data_iterator,&bt);
+	while (transmiting) 
+	{
+
+	}
+	output_timer_buffer = malloc(sizeof(uint16_t) * message_TIM_seq->sequence_length_ + 36 + 4 * 16); // 2 * 16 bit - two start sequence
+	uint8_t offset = 4; // 4*16 bit - start sequence
+	copy_intro_start_seq_to_transmit_buffer(output_timer_buffer, &bt);
+	copy_to_transmit_buffer(output_timer_buffer, offset ,message_TIM_seq); 
 	// TODO: add CRC
-	// TODO: add length
-	// TODO: start transmitting
 	set_timer_to_start();
+	free(message_TIM_seq);
 }
 
 
@@ -80,6 +95,7 @@ void send_8_data(uint8_t* data, uint8_t data_length)
 
 void set_timer_to_start()
 {
+	transmiting = 1;
 	//TODO : set TIM_CR register to start 
 }
 

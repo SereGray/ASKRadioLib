@@ -211,6 +211,7 @@ void test_bit_counter_borderline_bitrate_test(void)
     TEST_ASSERT_EQUAL(bit_counter(&test_bt, &seq, 0), 6);
     TEST_ASSERT_EQUAL(bit_counter(&test_bt, &seq, 1), 2);
     TEST_ASSERT_EQUAL(bit_counter(&test_bt, &seq, 2), 1);
+    free(seq.TIM_ticks_sequence_);
 }
 
 void test_remove_second_start_sequence_from_low_lvl_bit(void)
