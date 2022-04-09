@@ -9,30 +9,29 @@ extern uint8_t starts_from_high_lvl_bit;
 //------------------------FUNCTION-DECLARATION----------------------------
 void setUp(void);
 void tearDown(void);
-void test_FunctionUnderTest_should_ReturnFive(void);
-int FunctionUnderTest();
 
-void test_convert_6to4(void);
-void test_convert_4to6(void);
-void test_init_timings(void);
-void test_init_timings_all_bitrate_testing(void);
-void test_init_timings_manual_testing(void);
-void test_init_delete_convert_sequence(void);
-void test_init_delete_data_struct(void);
+void test_add_bits_to_buffer(void);
 void test_bit_counter_count_from_0_to_7_bits(void);
 void test_bit_counter_borderline_bitrate_test(void);
+void test_convert_6to4(void);
+void test_convert_4to6(void);
+void test_convert_from_buffer_big_buffer(void);
+void test_convert_from_buffer(void);
+void test_convert_timer_sequence_starts_from_low_lvl(void);
+void test_convert_timer_sequence_starts_from_hight_lvl(void);
+void test_get_length_of_TIM_sequence(void);
+void test_init_timings(void);
+void test_init_delete_convert_sequence(void);
+void test_init_delete_data_struct(void);
+void test_init_delete_timer_sequence(void);
+void test_init_delete_receive_sequence(void);
+void test_init_timings_all_bitrate_testing(void);
+void test_init_timings_manual_testing(void);
+void test_init_symbols_to_TIM_sequence(void);
 void test_remove_second_start_sequence_from_low_lvl_bit(void);
 void test_remove_second_start_sequence_from_low_lvl_bit_hight_speed(void);
 void test_remove_second_start_sequence_from_hight_lvl_bit(void);
 void test_remove_second_start_sequence_from_hight_lvl_bit_hight_speed(void);
-void test_add_bits_to_buffer(void);
-void test_convert_from_buffer_big_buffer(void);
-void test_convert_from_buffer(void);
-void test_init_delete_timer_sequence(void);
-void test_convert_timer_sequence_starts_from_low_lvl(void);
-void test_convert_timer_sequence_starts_from_hight_lvl(void);
-void test_init_symbols_to_TIM_sequence(void);
-void test_get_length_of_TIM_sequence(void);
 
 
 //----------------------------MAIN--------------------------------
@@ -61,6 +60,7 @@ int main(void)
     RUN_TEST(test_convert_timer_sequence_starts_from_hight_lvl);
     RUN_TEST(test_init_symbols_to_TIM_sequence);
     RUN_TEST(test_get_length_of_TIM_sequence);
+    RUN_TEST(test_init_delete_receive_sequence);
     UNITY_END();
 }
 
@@ -144,6 +144,19 @@ void test_init_timings_manual_testing(void)
     TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_, 468);
     TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_min_, 468 - 9);
     TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_max_, 468 + 9);
+}
+
+void test_get_length_of_TIM_sequence(void)
+{
+    uint32_t timer_frequency = 18000000;
+    bt = init_timings_(115200, timer_frequency); // bitrate 9600
+    uint8_t data[] = { 1,2,3,4,5,6,7,8 };
+    //  1       2       3       4           5       6       7           8
+    //   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c;
+    /// uint8_t excepted_bits[] = { 2, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
+    // EXCEPTED LENGTH IS 32
+    uint16_t res = get_length_of_TIM_sequence(*data, 8);
+    TEST_ASSERT_EQUAL(32, res);
 }
 
 void test_init_delete_convert_sequence(void)
@@ -516,3 +529,16 @@ void test_get_length_of_TIM_sequence(void)
     res = get_length_of_TIM_sequence(&test_arr, test_length);
     TEST_ASSERT_EQUAL(res, 31);
 }
+
+void test_init_delete_receive_sequence(void)
+{
+    TIM_sequence* test_seq = init_receive_sequence(16);
+    TEST_ASSERT_EQUAL(test_seq->sequence_length_, 16);
+    TEST_ASSERT_EQUAL(test_seq->sequence_iterator_, 0);
+    for (uint8_t i = 0; i < 16; i++)
+    {
+        TEST_ASSERT_EQUAL(test_seq->TIM_ticks_sequence_[i], 0);
+    }
+    delete_receive_sequence(test_seq);
+}
+

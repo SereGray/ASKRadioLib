@@ -60,13 +60,16 @@ void on_timer_count_interrupt() {
 	//TODO: Receive start on_Receive() funct
 }
 
+
+
 void on_transmit()
 {
 	free(output_timer_buffer);
 	transmiting = 0;
 }
 
-//TODO: проверить длину передачи (возможно выход за границы буфера) т к при переводе из 4+4 бита в 6+6 бит увеличивается длина сообщения
+
+
 void send_8_data(uint8_t* data, uint8_t data_length)
 {
 	uint16_t data_iterator = 0;
@@ -88,8 +91,6 @@ void send_8_data(uint8_t* data, uint8_t data_length)
 	set_timer_to_start();
 	free(message_TIM_seq);
 }
-
-
 
 
 

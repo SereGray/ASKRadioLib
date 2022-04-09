@@ -193,7 +193,7 @@ TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, 
 			transmit_sequence->sequence_iterator_ += 1;
 		}
 		// copy remaining values
-		for (uint8_t j = 1; j < sym_to_TIM[numbers_of_symbols_arr[j]].length; j++)
+		for (uint8_t j = 1; j < sym_to_TIM[numbers_of_symbols_arr[i]].length; j++)
 		{
 			transmit_sequence->TIM_ticks_sequence_[transmit_sequence->sequence_iterator_] = sym_to_TIM[numbers_of_symbols_arr[i]].data[j];
 			transmit_sequence->sequence_iterator_ += 1;
@@ -326,7 +326,7 @@ void init_symbols_to_TIM_sequence(symbol_bit_sequence *sym_bit_seq, uint8_t leng
 		for(int y = 1; y < 8; y++)
 		{
 			count_bit++;
-			if (curr_lvl != (temp_data >> y) & 1)
+			if (curr_lvl != ((temp_data >> y) & 1))
 			{
 				sym_bit_seq[i].data[sym_bit_seq[i].length] = count_bit;
 				count_bit = 0;
@@ -410,7 +410,7 @@ void delete_data_struct(data_full_msg* msg)
 	}
 }
 
-TIM_sequence* init_TIM_sequence(uint8_t len)
+TIM_sequence* init_receive_sequence(uint8_t len)
 {
 	TIM_sequence* seq = malloc(sizeof(TIM_sequence));
 	if (seq)

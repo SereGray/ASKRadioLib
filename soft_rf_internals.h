@@ -80,22 +80,22 @@ void add_bits_to_buffer(uint8_t bit, uint8_t *count, uint32_t *buff, uint8_t *it
 uint8_t bit_counter(bit_time* bt, TIM_sequence* tim_seq, uint16_t index); // ok
 void convert_from_buffer(uint32_t *buffer_, uint8_t *buffer_iterator_, converted_sequence* res, uint16_t* data_length, uint16_t* data_iterator); // ok
 converted_sequence* convert_timer_sequence(bit_time* bt, TIM_sequence* timers_sequence, uint16_t* length, uint16_t* data_iterator); // TODO
-TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, uint16_t* data_iterator, bit_time* bt);
+TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, uint16_t* data_iterator, bit_time* bt);   //--------------
 uint8_t convert_6to4(uint8_t data_6bit_in); // return converted 4 bit , just "inline" it  // ok
 uint8_t convert_4to6(uint8_t data_4bit_in); // return converted 6 bit ,  // ok
-void copy_intro_start_seq_to_transmit_buffer(uint16_t *output_timer_buffer, bit_time *bt);
-void copy_to_transmit_buffer(uint16_t* output_timer_buffer,uint8_t offset,TIM_sequence *message_TIM_seq);
+void copy_intro_start_seq_to_transmit_buffer(uint16_t *output_timer_buffer, bit_time *bt);  //------------------------
+void copy_to_transmit_buffer(uint16_t* output_timer_buffer,uint8_t offset,TIM_sequence *message_TIM_seq); //------------
 bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq);  // ok
-uint16_t get_length_of_TIM_sequence(uint8_t *numbers_of_symbols_arr, uint32_t len);
-void read_data_from_buffer(bit_time* bt, data_full_msg* message, TIM_sequence* local_buffer, uint8_t first_reading);
+uint16_t get_length_of_TIM_sequence(uint8_t *numbers_of_symbols_arr, uint32_t len); // ok
+void read_data_from_buffer(bit_time* bt, data_full_msg* message, TIM_sequence* local_buffer, uint8_t first_reading);   // --------------
 void remove_second_start_sequence(bit_time* bt, TIM_sequence* local_buffer);  // ok
-void init_symbols_to_TIM_sequence(symbol_bit_sequence* sym_bit_seq, uint8_t length, bit_time* bt);
+void init_symbols_to_TIM_sequence(symbol_bit_sequence* sym_bit_seq, uint8_t length, bit_time* bt);   // ---------- ok
 converted_sequence* init_converted_sequence(uint8_t len); // ok
 void delete_converted_sequence(converted_sequence* seq);  // ok
 data_full_msg* init_data_struct(uint8_t len); // ok
 void delete_data_struct(data_full_msg* msg); // ok
-TIM_sequence* init_receive_sequence(uint8_t len);
-void delete_receive_sequence(TIM_sequence * seq);
+TIM_sequence* init_receive_sequence(uint8_t len);  //------------ ok
+void delete_receive_sequence(TIM_sequence * seq);  //------------- ok
 
 
 #endif // !INTERNAL_FUNCTIONS
