@@ -152,7 +152,7 @@ converted_sequence* convert_timer_sequence(bit_time* bt, TIM_sequence* tim_seq, 
 
 
 //TODO: test first
-TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, uint16_t* data_iterator, bit_time *bt)
+TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, uint8_t* data_iterator, bit_time *bt)
 {
 	uint32_t length_numbers_of_symbols_arr = sizeof(uint8_t) * (*data_length) * 2; // converting 4 to 6 s uses 2 times the memory
 	uint8_t *numbers_of_symbols_arr = malloc(length_numbers_of_symbols_arr);

@@ -80,7 +80,7 @@ void add_bits_to_buffer(uint8_t bit, uint8_t *count, uint32_t *buff, uint8_t *it
 uint8_t bit_counter(bit_time* bt, TIM_sequence* tim_seq, uint16_t index); // ok
 void convert_from_buffer(uint32_t *buffer_, uint8_t *buffer_iterator_, converted_sequence* res, uint16_t* data_length, uint16_t* data_iterator); // ok
 converted_sequence* convert_timer_sequence(bit_time* bt, TIM_sequence* timers_sequence, uint16_t* length, uint16_t* data_iterator); // TODO
-TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, uint16_t* data_iterator, bit_time* bt);   //--------------
+TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, uint8_t* data_iterator, bit_time* bt);   //-------------- ok
 uint8_t convert_6to4(uint8_t data_6bit_in); // return converted 4 bit , just "inline" it  // ok
 uint8_t convert_4to6(uint8_t data_4bit_in); // return converted 6 bit ,  // ok
 void copy_intro_start_seq_to_transmit_buffer(uint16_t *output_timer_buffer, bit_time *bt);  //------------------------

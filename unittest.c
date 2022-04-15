@@ -15,6 +15,7 @@ void test_bit_counter_count_from_0_to_7_bits(void);
 void test_bit_counter_borderline_bitrate_test(void);
 void test_convert_6to4(void);
 void test_convert_4to6(void);
+void test_convert_data_to_TIM_sequence(void);
 void test_convert_from_buffer_big_buffer(void);
 void test_convert_from_buffer(void);
 void test_convert_timer_sequence_starts_from_low_lvl(void);
@@ -41,6 +42,7 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_convert_6to4);
     RUN_TEST(test_convert_4to6);
+    RUN_TEST(test_convert_data_to_TIM_sequence);
     RUN_TEST(test_init_timings);
     RUN_TEST(test_init_timings_all_bitrate_testing);
     RUN_TEST(test_init_timings_manual_testing);
@@ -83,6 +85,27 @@ void test_convert_4to6(void)
     TEST_ASSERT_EQUAL_INT(0x34, convert_4to6(15));
     TEST_ASSERT_EQUAL_INT(0x0d, convert_4to6(0));
     TEST_ASSERT_EQUAL_INT(0x16, convert_4to6(4));
+}
+
+void test_convert_data_to_TIM_sequence(void)
+{
+    //    1*2^4+2=18        3*2^4+4=52             5*2^4 + 6=86       7*2^4+8=120
+    uint8_t data[] = { 18,52,86,120 };
+    uint8_t data_lenght = 4;
+    uint8_t data_iterator = 0;
+    //  1       2       3       4           5       6       7           8
+   //   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c;
+   uint8_t excepted_bits[] = { 2, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
+   // LENGTH IS 32
+    uint32_t timer_frequency = 18000000;
+    bt = init_timings_(115200, timer_frequency); // bitrate 9600
+    TIM_sequence *res = init_TIM_sequence();
+    res = convert_data_to_TIM_sequence(&data, &data_lenght, &data_iterator, &bt);
+    for (uint8_t i = 0; i < res->sequence_length_; i++)
+    {
+        TEST_ASSERT_EQUAL(excepted_bits[i], res->TIM_ticks_sequence_[i]);
+    }
+    
 }
 
 void test_init_timings(void)
