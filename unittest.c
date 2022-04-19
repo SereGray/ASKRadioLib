@@ -29,6 +29,7 @@ void test_init_delete_receive_sequence(void);
 void test_init_timings_all_bitrate_testing(void);
 void test_init_timings_manual_testing(void);
 void test_init_symbols_to_TIM_sequence(void);
+void test_read_from_buffer(void);
 void test_remove_second_start_sequence_from_low_lvl_bit(void);
 void test_remove_second_start_sequence_from_low_lvl_bit_hight_speed(void);
 void test_remove_second_start_sequence_from_hight_lvl_bit(void);
@@ -63,6 +64,7 @@ int main(void)
     RUN_TEST(test_init_symbols_to_TIM_sequence);
     RUN_TEST(test_get_length_of_TIM_sequence);
     RUN_TEST(test_init_delete_receive_sequence);
+    RUN_TEST(test_read_from_buffer);
     UNITY_END();
 }
 
@@ -542,6 +544,33 @@ void test_init_symbols_to_TIM_sequence(void)
     TEST_ASSERT_EQUAL(sym_bit_seq[13].length, 5);
     TEST_ASSERT_EQUAL(sym_bit_seq[14].length, 5);
     TEST_ASSERT_EQUAL(sym_bit_seq[15].length, 5);
+}
+
+void test_read_from_buffer(void)
+{
+    uint8_t start_read_data = 1;
+    uint32_t timer_frequency = 18000000;
+    bit_time test_bt = init_timings_(115200, timer_frequency); // bitrate 9600
+    started = 1;
+    uint8_t length = 34;
+    uint16_t data_iterator = 0;
+    TIM_sequence* test_sequence = init_TIM_sequence(length);
+    uint16_t sequence[] = { 3, 3, 3, 3, 1, 3, 2, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 2, 3, 2 };
+    //                       0x38,  0x38,   0x23,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
+    for (int i = 0; i < 34; i++)
+    {
+        test_sequence->TIM_ticks_sequence_[i] = sequence[i] * test_bt.TIM_ticks_per_bit_;
+    }
+    // remove first start sequence
+    test_sequence->sequence_iterator_ = 2;
+    data_full_msg* test_message;
+    // remove second start sequence
+    read_data_from_buffer(&test_bt, test_message, test_sequence, start_read_data);
+    TEST_ASSERT_EQUAL(test_message->data_[0], (8 << 4) + 1);
+    TEST_ASSERT_EQUAL(test_message->data_[1], (2 << 4) + 3);
+    TEST_ASSERT_EQUAL(test_message->data_[2], (4 << 4) + 5);
+    TEST_ASSERT_EQUAL(test_message->data_[3], (6 << 4) + 7);
+    TEST_ASSERT_EQUAL(started, 0);
 }
 
 void test_get_length_of_TIM_sequence(void)

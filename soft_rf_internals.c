@@ -341,7 +341,7 @@ void init_symbols_to_TIM_sequence(symbol_bit_sequence *sym_bit_seq, uint8_t leng
 }
 
 
-void copy_intro_start_seq_to_transmit_buffer(uint16_t *output_timer_buffer, bit_time* bt)
+void copy_intro_start_seq_to_transmit_buffer(uint16_t *output_timer_buffer, bit_time* bt, uint8_t *buffer_iterator)
 {
 	for(uint8_t i =0; i < 36; i++)
 	{
@@ -351,11 +351,16 @@ void copy_intro_start_seq_to_transmit_buffer(uint16_t *output_timer_buffer, bit_
 	{
 		output_timer_buffer[i] = bt->TIM_ticks_per_bit_ * 3;
 	}
+	*buffer_iterator = 36;
 }
 
-void copy_to_transmit_buffer(uint16_t *output_timer_buffer,uint8_t offset,TIM_sequence *message_TIM_seq)
+void copy_to_transmit_buffer(uint16_t *output_timer_buffer,uint8_t *offset,TIM_sequence *message_TIM_seq)
 {
-	// учесть начинается сообщение с нуля или с еденицы
+	
+	for (uint8_t i = *offset; i < message_TIM_seq->sequence_length_; i++)
+	{
+		output_timer_buffer[i] = message_TIM_seq->TIM_ticks_sequence_[i - *offset];
+	}
 }
 
 converted_sequence* init_converted_sequence(uint8_t len)
