@@ -20,7 +20,8 @@ void test_convert_from_buffer_big_buffer(void);
 void test_convert_from_buffer(void);
 void test_convert_timer_sequence_starts_from_low_lvl(void);
 void test_convert_timer_sequence_starts_from_hight_lvl(void);
-void test_get_length_of_TIM_sequence(void);
+void test_get_length_of_TIM_sequence1(void);
+void test_get_length_of_TIM_sequence2(void);
 void test_init_timings(void);
 void test_init_delete_convert_sequence(void);
 void test_init_delete_data_struct(void);
@@ -62,7 +63,8 @@ int main(void)
     RUN_TEST(test_convert_timer_sequence_starts_from_low_lvl);
     RUN_TEST(test_convert_timer_sequence_starts_from_hight_lvl);
     RUN_TEST(test_init_symbols_to_TIM_sequence);
-    RUN_TEST(test_get_length_of_TIM_sequence);
+    RUN_TEST(test_get_length_of_TIM_sequence1);
+    RUN_TEST(test_get_length_of_TIM_sequence2);
     RUN_TEST(test_init_delete_receive_sequence);
     RUN_TEST(test_read_from_buffer);
     UNITY_END();
@@ -100,14 +102,20 @@ void test_convert_data_to_TIM_sequence(void)
    uint8_t excepted_bits[] = { 2, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
    // LENGTH IS 32
     uint32_t timer_frequency = 18000000;
-    bt = init_timings_(115200, timer_frequency); // bitrate 9600
-    TIM_sequence *res = init_TIM_sequence();
-    res = convert_data_to_TIM_sequence(&data, &data_lenght, &data_iterator, &bt);
+    bit_time test_bt = init_timings_(115200, timer_frequency); // bitrate 9600
+    uint16_t excepted_TIM_ticks[32];
+    for (uint8_t i = 0; i < 32; i++)
+    {
+        excepted_TIM_ticks[i] = test_bt.TIM_ticks_per_bit_ * excepted_bits[i];
+    }
+    init_symbols_to_TIM_sequence(sym_to_TIM, 16, &test_bt);
+    TIM_sequence *res = init_receive_sequence(1);
+    res = convert_data_to_TIM_sequence(data, &data_lenght, &data_iterator, &test_bt);
     for (uint8_t i = 0; i < res->sequence_length_; i++)
     {
-        TEST_ASSERT_EQUAL(excepted_bits[i], res->TIM_ticks_sequence_[i]);
+        TEST_ASSERT_EQUAL(excepted_TIM_ticks[i], res->TIM_ticks_sequence_[i]);
     }
-    
+    delete_receive_sequence(res);
 }
 
 void test_init_timings(void)
@@ -171,17 +179,22 @@ void test_init_timings_manual_testing(void)
     TEST_ASSERT_EQUAL_INT(bt.start_bit_ticks_max_, 468 + 9);
 }
 
-void test_get_length_of_TIM_sequence(void)
+void test_get_length_of_TIM_sequence1(void)
 {
-    uint32_t timer_frequency = 18000000;
-    bt = init_timings_(115200, timer_frequency); // bitrate 9600
     uint8_t data[] = { 1,2,3,4,5,6,7,8 };
     //  1       2       3       4           5       6       7           8
     //   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c;
     /// uint8_t excepted_bits[] = { 2, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
     // EXCEPTED LENGTH IS 32
-    uint16_t res = get_length_of_TIM_sequence(*data, 8);
+    uint16_t res = get_length_of_TIM_sequence(data, 8);
     TEST_ASSERT_EQUAL(32, res);
+}
+
+void test_get_length_of_TIM_sequence2(void)
+{
+    uint8_t test_arr[] = { 0,1,2,3,4,5,6 }; // 00001101 00001110 00010011 00010101 00010110 00011001 00011010 00011100
+    uint16_t res = get_length_of_TIM_sequence(test_arr, 7);
+    TEST_ASSERT_EQUAL(res, 31);
 }
 
 void test_init_delete_convert_sequence(void)
@@ -281,7 +294,7 @@ void test_remove_second_start_sequence_from_low_lvl_bit_hight_speed(void)
     bit_time test_bt = init_timings_(bitrate_[0], 72000000);
     uint8_t length = 35;
     uint16_t data_iterator = 0;
-    TIM_sequence* test_sequence = init_TIM_sequence(length);
+    TIM_sequence* test_sequence = init_receive_sequence(length);
     uint16_t sequence[] = { 3, 3, 3, 5, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
     //                       0x38,  0x38,   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
     for (int i = 0; i < 35; i++)
@@ -399,10 +412,10 @@ void test_convert_from_buffer(void)
     max_timer_buffer_length = 35;
     starts_from_high_lvl_bit = 0;
     bit_time test_bt = init_timings_(bitrate_[0], 72000000);
-    uint8_t length = 35;
+    uint16_t length = 35;
     uint16_t data_iterator = 0;
-    TIM_sequence* test_sequence = init_TIM_sequence(length);
-    uint16_t sequence[] = {0,0, 0, 2, 2,  1, 1,  2, 3,  2, 1,  2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
+    TIM_sequence* test_sequence = init_receive_sequence(35);
+    uint8_t sequence[] = {0,0, 0, 2, 2,  1, 1,  2, 3,  2, 1,  2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
     //                         0x0d,          0x0e,      0x13,  0x15,         0x16,  0x19,     0x1a,     0x23
     //                   3, 3, 3, 5, 2,  1, 1,  2, 3,  2, 1,  2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2
     for (int i = 0; i < 35; i++)
@@ -460,7 +473,7 @@ void test_convert_from_buffer(void)
 void test_init_delete_timer_sequence(void)
 {
     uint8_t len = 8;
-    TIM_sequence* seq = init_TIM_sequence(len);
+    TIM_sequence* seq = init_receive_sequence(len);
     for (uint8_t i = 0; i < len; i++)
     {
         TEST_ASSERT_EQUAL(seq->TIM_ticks_sequence_[0], 0);
@@ -478,7 +491,7 @@ void test_convert_timer_sequence_starts_from_low_lvl(void)
     bit_time test_bt = init_timings_(bitrate_[0], 72000000);
     uint8_t length = 34;
     uint16_t data_iterator = 0;
-    TIM_sequence *test_sequence = init_TIM_sequence(length);
+    TIM_sequence *test_sequence = init_receive_sequence(length);
     uint16_t sequence[] = { 3, 3, 3, 5, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 2, 3, 2 };
     //                       0x38,  0x38,   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
     for (int i = 0; i < 34; i++)
@@ -504,7 +517,7 @@ void test_convert_timer_sequence_starts_from_hight_lvl(void)
     bit_time test_bt = init_timings_(bitrate_[0], 72000000);
     uint8_t length = 34;
     uint16_t data_iterator = 0;
-    TIM_sequence* test_sequence = init_TIM_sequence(length);
+    TIM_sequence* test_sequence = init_receive_sequence(length);
     uint16_t sequence[] = { 3, 3, 3, 3, 1, 3, 2, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 2, 3, 2 };
     //                       0x38,  0x38,   0x23,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
     for (int i = 0; i < 34; i++)
@@ -525,25 +538,25 @@ void test_convert_timer_sequence_starts_from_hight_lvl(void)
 
 void test_init_symbols_to_TIM_sequence(void)
 {
-    symbol_bit_sequence sym_bit_seq[16];
-    bit_time test_bt = init_timings_(bitrate_[0], 72000000);
+    symbol_bit_sequence sym_bit_seq[16] = { 0 };
+    bit_time test_bt = init_timings_(bitrate_[5], 18000000);
     init_symbols_to_TIM_sequence( sym_bit_seq, 16, &test_bt);
     TEST_ASSERT_EQUAL(sym_bit_seq[0].length, 4);
     TEST_ASSERT_EQUAL(sym_bit_seq[1].length, 3);
     TEST_ASSERT_EQUAL(sym_bit_seq[2].length, 4);
     TEST_ASSERT_EQUAL(sym_bit_seq[3].length, 6);
-    TEST_ASSERT_EQUAL(sym_bit_seq[4].length, 6);
+    TEST_ASSERT_EQUAL(sym_bit_seq[4].length, 5);
     TEST_ASSERT_EQUAL(sym_bit_seq[5].length, 4);
     TEST_ASSERT_EQUAL(sym_bit_seq[6].length, 5);
     TEST_ASSERT_EQUAL(sym_bit_seq[7].length, 3);
-    TEST_ASSERT_EQUAL(sym_bit_seq[8].length, 4);
-    TEST_ASSERT_EQUAL(sym_bit_seq[9].length, 6);
-    TEST_ASSERT_EQUAL(sym_bit_seq[10].length, 5);
+    TEST_ASSERT_EQUAL(sym_bit_seq[8].length, 3);
+    TEST_ASSERT_EQUAL(sym_bit_seq[9].length, 5);
+    TEST_ASSERT_EQUAL(sym_bit_seq[10].length, 4);
     TEST_ASSERT_EQUAL(sym_bit_seq[11].length, 5);
-    TEST_ASSERT_EQUAL(sym_bit_seq[12].length, 7);
-    TEST_ASSERT_EQUAL(sym_bit_seq[13].length, 5);
-    TEST_ASSERT_EQUAL(sym_bit_seq[14].length, 5);
-    TEST_ASSERT_EQUAL(sym_bit_seq[15].length, 5);
+    TEST_ASSERT_EQUAL(sym_bit_seq[12].length, 6);
+    TEST_ASSERT_EQUAL(sym_bit_seq[13].length, 4);
+    TEST_ASSERT_EQUAL(sym_bit_seq[14].length, 4);
+    TEST_ASSERT_EQUAL(sym_bit_seq[15].length, 4);
 }
 
 void test_read_from_buffer(void)
@@ -554,7 +567,7 @@ void test_read_from_buffer(void)
     started = 1;
     uint8_t length = 34;
     uint16_t data_iterator = 0;
-    TIM_sequence* test_sequence = init_TIM_sequence(length);
+    TIM_sequence* test_sequence = init_receive_sequence(length);
     uint16_t sequence[] = { 3, 3, 3, 3, 1, 3, 2, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 2, 3, 2 };
     //                       0x38,  0x38,   0x23,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
     for (int i = 0; i < 34; i++)
@@ -563,7 +576,7 @@ void test_read_from_buffer(void)
     }
     // remove first start sequence
     test_sequence->sequence_iterator_ = 2;
-    data_full_msg* test_message;
+    data_full_msg* test_message = init_data_struct(1);
     // remove second start sequence
     read_data_from_buffer(&test_bt, test_message, test_sequence, start_read_data);
     TEST_ASSERT_EQUAL(test_message->data_[0], (8 << 4) + 1);
@@ -571,15 +584,7 @@ void test_read_from_buffer(void)
     TEST_ASSERT_EQUAL(test_message->data_[2], (4 << 4) + 5);
     TEST_ASSERT_EQUAL(test_message->data_[3], (6 << 4) + 7);
     TEST_ASSERT_EQUAL(started, 0);
-}
-
-void test_get_length_of_TIM_sequence(void)
-{
-    uint8_t test_arr[] = { 0,1,2,3,4,5,6 }; // 00001101 00001110 00010011 00010101 00010110 00011001 00011010 00011100
-    uint32_t test_length = 7;
-    uint16_t res = 0;
-    res = get_length_of_TIM_sequence(&test_arr, test_length);
-    TEST_ASSERT_EQUAL(res, 31);
+    delete_receive_sequence(test_sequence);
 }
 
 void test_init_delete_receive_sequence(void)

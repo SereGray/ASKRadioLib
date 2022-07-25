@@ -1,6 +1,6 @@
 #include"soft_rf_internals.h"
 
-symbol_bit_sequence sym_to_TIM[16];
+symbol_bit_sequence sym_to_TIM[16] = { 0 };
 const uint32_t bitrate_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
 uint8_t started = 0;
 uint8_t starts_from_high_lvl_bit = 0; // the starts_from_high_lvl_bit indicates which bit the sequence starts from hight lvl
@@ -161,13 +161,10 @@ TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, 
 	{
 		numbers_of_symbols_arr[i*2] = data[i]>>4; // number in "symbols" array of left part (4 bit) of data 
 		numbers_of_symbols_arr[i * 2 + 1] = data[i] & 0b00001111; // number in "symbols" array of right part (4bit) of data
-		*data_iterator += 1;
-	//	transmit_sequence[i*2] = convert_4to6(*data>>4); // left part (4 bit) of data 
-	//	transmit_sequence[i * 2 + 1] = convert_4to6(*data & 0b00001111); // right part (4bit) of data
 	}
 	// get length of sequence
 	uint16_t length_of_sequence = get_length_of_TIM_sequence(numbers_of_symbols_arr, length_numbers_of_symbols_arr);
-	TIM_sequence *transmit_sequence = init_TIM_sequence(length_of_sequence);
+	TIM_sequence *transmit_sequence = init_receive_sequence(length_of_sequence);
 	// convert to TIM duration using symbol_bit_sequenc
 	// first elem
 	for (uint8_t i = 0; i < sym_to_TIM[numbers_of_symbols_arr[0]].length; i++)
@@ -202,6 +199,7 @@ TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, 
 	transmit_sequence->sequence_length_ = transmit_sequence->sequence_iterator_;
 	transmit_sequence->sequence_iterator_ = 0;
 	free(numbers_of_symbols_arr);
+	return transmit_sequence;
 }
 
 uint8_t convert_6to4(uint8_t data_6bit_in)
@@ -316,23 +314,27 @@ void init_symbols_to_TIM_sequence(symbol_bit_sequence *sym_bit_seq, uint8_t leng
 {
 	for (int i = 0; i < length; i++)
 	{
-		sym_bit_seq[i].start_end_lvl_ = 1 & symbols[i] + 2 * (1 & (symbols[i] >> 7)); // 1 * first 
+		sym_bit_seq[i].start_end_lvl_ = 1 * (1 & (symbols[i] >> 5)) + 2 *( 1 & symbols[i]); // 1 * first bit + 2 * end bit
 		uint8_t temp_data = symbols[i];
-		uint8_t curr_lvl = temp_data & 1 ; // last right bit 
-		uint8_t count_bit = 0;
-		sym_bit_seq[i].length = 0;
+
+		uint8_t last_lvl = (1 & (temp_data >> 5)); // last left bit 
+		uint8_t count_bit = 1;
+		sym_bit_seq[i].length = 1;
 
 		// counting bits
-		for(int y = 1; y < 8; y++)
+		for(int y = 1; y < 6; y++) // iteration "0" is init last_lvl
 		{
-			count_bit++;
-			if (curr_lvl != ((temp_data >> y) & 1))
+			uint8_t current_lvl = (temp_data >> (5 - y)) & 1; 
+			if (last_lvl != current_lvl )
 			{
-				sym_bit_seq[i].data[sym_bit_seq[i].length] = count_bit;
+				sym_bit_seq[i].data[sym_bit_seq[i].length-1] = count_bit;
 				count_bit = 0;
 				sym_bit_seq[i].length += 1;
+				last_lvl = current_lvl;
 			}
+			count_bit++;
 		}
+		sym_bit_seq[i].data[sym_bit_seq[i].length-1] = count_bit;
 		for(int y = 0; y < sym_bit_seq[i].length; y++)
 		{
 			sym_bit_seq[i].data[y] *= bt->TIM_ticks_per_bit_;
