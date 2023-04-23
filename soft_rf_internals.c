@@ -1,6 +1,6 @@
 #include"soft_rf_internals.h"
 
-symbol_bit_sequence sym_to_TIM[16] = { 0 };
+symbol_bit_sequence sym_to_TIM[16] = { 0 };  // высчитывается при инициализации ( из таблицы 4в6 числовой в таблицу в 4в6 тиках таймеров)
 const uint32_t bitrate_[] = { 9600, 19200, 38400, 57600, 76800, 115200 };
 uint8_t started = 0;
 uint8_t starts_from_high_lvl_bit = 0; // the starts_from_high_lvl_bit indicates which bit the sequence starts from hight lvl
@@ -156,6 +156,7 @@ TIM_sequence* convert_data_to_TIM_sequence(uint8_t* data, uint8_t* data_length, 
 {
 	uint32_t length_numbers_of_symbols_arr = sizeof(uint8_t) * (*data_length) * 2; // converting 4 to 6 s uses 2 times the memory
 	uint8_t *numbers_of_symbols_arr = malloc(length_numbers_of_symbols_arr);
+	//TODO: вставить функцию convert_4to6()
 	// convert 4 to 6
 	for (uint8_t i = *data_iterator; i < *data_length; i++)
 	{
@@ -249,6 +250,7 @@ uint16_t get_length_of_TIM_sequence(uint8_t* numbers_of_symbols_arr, uint32_t le
 		// if the current symbol has the same start level as the previous symbol's end level, then lower res
 		uint8_t last_lvl = sym_to_TIM[numbers_of_symbols_arr[i - 1]].start_end_lvl_;
 		uint8_t curr_lvl = sym_to_TIM[numbers_of_symbols_arr[i]].start_end_lvl_;
+		// если уровень последнего бита предыдущей последовательности равен уровню начального бита текущей последовательности
 		if ((last_lvl >= 2 && (curr_lvl % 2 > 0)) || (last_lvl < 2 && curr_lvl % 2 == 0)) 		
 		{
 			res -= 1;

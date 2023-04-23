@@ -73,7 +73,14 @@ int main(void)
 
 //------------------FUNCTION-DEFINITION---------------------------
 
-void setUp(void) {}
+void setUp(void)
+{
+    const uint32_t timer_freq = 72000000;
+    bt = init_timings_(bitrate_[4], timer_freq);
+    max_timer_buffer_length = 24;
+    max_data_length = 27;
+    init_symbols_to_TIM_sequence(&sym_to_TIM, 16, &bt);
+}
 void tearDown(void) {}
 
 
@@ -97,10 +104,11 @@ void test_convert_data_to_TIM_sequence(void)
     uint8_t data[] = { 18,52,86,120 };
     uint8_t data_lenght = 4;
     uint8_t data_iterator = 0;
-    //  1       2       3       4           5       6       7           8
-   //   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c;
-   uint8_t excepted_bits[] = { 2, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
-   // LENGTH IS 32
+    //  0       1       2      3           4       5       6           7       8
+   //   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c   0x23
+   //  001101, 001110, 010011, 010101,   010110, 011001, 011010,    011100  100011
+   uint8_t excepted_bits[] = {2,3,2,1,2,2,1,1,1,1,1,1,1,1,1,2,2,2,2,1,1,2,1,1,2,3,2,1,3,2};
+   // LENGTH IS 30
     uint32_t timer_frequency = 18000000;
     bit_time test_bt = init_timings_(115200, timer_frequency); // bitrate 9600
     uint16_t excepted_TIM_ticks[32];
@@ -113,7 +121,9 @@ void test_convert_data_to_TIM_sequence(void)
     res = convert_data_to_TIM_sequence(data, &data_lenght, &data_iterator, &test_bt);
     for (uint8_t i = 0; i < res->sequence_length_; i++)
     {
-        TEST_ASSERT_EQUAL(excepted_TIM_ticks[i], res->TIM_ticks_sequence_[i]);
+        char message[32];
+        sprintf_s(message, 32," i:%d ", i);
+        TEST_ASSERT_EQUAL_MESSAGE(excepted_TIM_ticks[i], res->TIM_ticks_sequence_[i], message);
     }
     delete_receive_sequence(res);
 }
@@ -183,18 +193,19 @@ void test_get_length_of_TIM_sequence1(void)
 {
     uint8_t data[] = { 1,2,3,4,5,6,7,8 };
     //  1       2       3       4           5       6       7           8
-    //   0xd,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c;
-    /// uint8_t excepted_bits[] = { 2, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 3, 2 };
-    // EXCEPTED LENGTH IS 32
-    uint16_t res = get_length_of_TIM_sequence(data, 8);
-    TEST_ASSERT_EQUAL(32, res);
+    //  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c;   0x23  
+    /// uint8_t excepted_bits[] = { 2, 2, 1, 1, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 2, 3, 2 }; WRONG!! 00001101 00001110 00010011 00010101 00010110 00011001 00011010 00011100
+    /// uint8_t excepted_bits[] = { 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 2, 3, 2, 1, 3, 2}; true! 00001110 00010011 00010101 00010110 00011001 00011010 00011100 100011
+    // EXCEPTED LENGTH IS 31
+    uint16_t res = get_length_of_TIM_sequence(&data, 8);
+    TEST_ASSERT_EQUAL(30, res);
 }
 
 void test_get_length_of_TIM_sequence2(void)
 {
-    uint8_t test_arr[] = { 0,1,2,3,4,5,6 }; // 00001101 00001110 00010011 00010101 00010110 00011001 00011010 00011100
+    uint8_t test_arr[] = { 0,1,2,3,4,5,6 }; // 00001101 00001110 00010011 00010101 00010110 00011001 00011010 
     uint16_t res = get_length_of_TIM_sequence(test_arr, 7);
-    TEST_ASSERT_EQUAL(res, 31);
+    TEST_ASSERT_EQUAL(res, 29);
 }
 
 void test_init_delete_convert_sequence(void)

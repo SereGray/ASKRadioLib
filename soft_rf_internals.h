@@ -50,6 +50,7 @@ typedef struct {
 
 typedef struct {
     // TODO: проверить рузультат 0%2 и проверить логику start_end_lvl_
+    // TODO: упростить !
     uint8_t start_end_lvl_; //  =1 if start high, =2 if end high, =3 if start & end hight, 0 if start & end low
     uint8_t length; // number of last element + 1
     //TODO: maybe uint16_t data ?
