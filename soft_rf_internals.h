@@ -1,4 +1,4 @@
-#ifndef INTERNAL_FUNCTIONS
+п»ї#ifndef INTERNAL_FUNCTIONS
 #define INTERNAL_FUNCTIONS
 
 #include<inttypes.h>
@@ -14,7 +14,7 @@
 typedef struct
 {
     uint32_t TIM_ticks_per_bit_;
-    uint8_t delta_timer_ticks_per_bit_;  // допуск на длину бита +- 1/50 длительности бита
+    uint8_t delta_timer_ticks_per_bit_;  // РґРѕРїСѓСЃРє РЅР° РґР»РёРЅСѓ Р±РёС‚Р° +- 1/50 РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё Р±РёС‚Р°
     uint16_t TIM_ticks_per_bit_min_;
     uint16_t TIM_ticks_per_bit_max_;
     uint16_t start_bit_ticks_;
@@ -24,18 +24,18 @@ typedef struct
 
 typedef struct
 {
-    // циклический буффер значений таймера
-    uint16_t* TIM_ticks_sequence_; //{0,} // принимаемая последовательность
+    // С†РёРєР»РёС‡РµСЃРєРёР№ Р±СѓС„С„РµСЂ Р·РЅР°С‡РµРЅРёР№ С‚Р°Р№РјРµСЂР°
+    uint16_t* TIM_ticks_sequence_; //{0,} // РїСЂРёРЅРёРјР°РµРјР°СЏ РїРѕСЃР»РµРґРѕРІР°С‚РµР»СЊРЅРѕСЃС‚СЊ
     uint16_t sequence_length_;
-    // (не переведенная) (304 бита (19*16бит) округл до 20)
-    uint16_t sequence_iterator_; // 0 TODO: нужно что бы при приеме данных этот итератор увеличивался
+    // (РЅРµ РїРµСЂРµРІРµРґРµРЅРЅР°СЏ) (304 Р±РёС‚Р° (19*16Р±РёС‚) РѕРєСЂСѓРіР» РґРѕ 20)
+    uint16_t sequence_iterator_; // 0 TODO: РЅСѓР¶РЅРѕ С‡С‚Рѕ Р±С‹ РїСЂРё РїСЂРёРµРјРµ РґР°РЅРЅС‹С… СЌС‚РѕС‚ РёС‚РµСЂР°С‚РѕСЂ СѓРІРµР»РёС‡РёРІР°Р»СЃСЏ
 }TIM_sequence;
 
 
 typedef struct
 {
     uint8_t data_length_; // = 0; 
-    uint16_t data_iterator_;//  0; // побитовый итератор, номера битов: 7`6`5`4`3`2`1`0  15`14`13`12`11`10`9`8   23`22`21 ...
+    uint16_t data_iterator_;//  0; // РїРѕР±РёС‚РѕРІС‹Р№ РёС‚РµСЂР°С‚РѕСЂ, РЅРѕРјРµСЂР° Р±РёС‚РѕРІ: 7`6`5`4`3`2`1`0  15`14`13`12`11`10`9`8   23`22`21 ...
     uint8_t* data_;//{ 0, };
     uint8_t CRC_message_[2]; // { 0, };
 } data_full_msg;
@@ -49,15 +49,15 @@ typedef struct {
 }converted_sequence;
 
 typedef struct {
-    // TODO: проверить рузультат 0%2 и проверить логику start_end_lvl_
-    // TODO: упростить !
+    // TODO: РїСЂРѕРІРµСЂРёС‚СЊ СЂСѓР·СѓР»СЊС‚Р°С‚ 0%2 Рё РїСЂРѕРІРµСЂРёС‚СЊ Р»РѕРіРёРєСѓ start_end_lvl_
+    // TODO: СѓРїСЂРѕСЃС‚РёС‚СЊ !
     uint8_t start_end_lvl_; //  =1 if start high, =2 if end high, =3 if start & end hight, 0 if start & end low
     uint8_t length; // number of last element + 1
     //TODO: maybe uint16_t data ?
     uint16_t data[8]; //TIM ticks count micro sequences
 }symbol_bit_sequence;
 
-static const uint8_t symbols[] =    // спизжено с virtualwire - данная таблица переводит 4 бита в 6, при этом у 6 бит равное отношение "1" и "0" т.е. 3 "1" и 3 "0"
+static const uint8_t symbols[] =    // СЃРїРёР·Р¶РµРЅРѕ СЃ virtualwire - РґР°РЅРЅР°СЏ С‚Р°Р±Р»РёС†Р° РїРµСЂРµРІРѕРґРёС‚ 4 Р±РёС‚Р° РІ 6, РїСЂРё СЌС‚РѕРј Сѓ 6 Р±РёС‚ СЂР°РІРЅРѕРµ РѕС‚РЅРѕС€РµРЅРёРµ "1" Рё "0" С‚.Рµ. 3 "1" Рё 3 "0"
 {
     0x0d,  0x0e,  0x13, 0x15, 0x16, 0x19, 0x1a, 0x1c, // 001101, 001110, 010011, 010101, 010110, 011001, 011010, 011100, 
     0x23, 0x25, 0x26, 0x29, 0x2a, 0x2c, 0x32, 0x34    // 100011, 100101, 100110, 101001, 101010, 101100, 110010, 110100
