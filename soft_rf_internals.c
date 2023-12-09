@@ -118,8 +118,8 @@ converted_sequence* convert_timer_sequence(bit_time* bt, TIM_sequence* tim_seq, 
 
 		if (starts_from_high_lvl_bit) // if starts from "1"
 		{
-			index_1 = i;
 			index_0 = i + 1;
+			index_1 = i;
 		}
 		else
 		{
@@ -260,26 +260,24 @@ uint16_t get_length_of_TIM_sequence(uint8_t* numbers_of_symbols_arr, uint32_t le
 }
 
 //call on on_timer_count_interrupt()
-void read_data_from_buffer(bit_time* bt, data_full_msg* message, TIM_sequence* local_buffer, uint8_t start_read_data)
+data_full_msg* read_data_from_buffer(bit_time* bt, TIM_sequence* local_buffer, uint8_t start_read_data)
 {
-	if (start_read_data)
+	if (start_read_data) // TODO: delete 
 	{
 		remove_second_start_sequence(bt,local_buffer); // offset sequence iterator
 		//message->data_length_ = MAX_DATA_LENGTH; // only for the first conversion, the data length is taken from the message after the first decoding secuence
-		message = init_data_struct(max_data_length);
+		//delete_data_struct(message);
 	}
-
-	converted_sequence* temp = convert_timer_sequence(bt, local_buffer, &message->data_length_, &message->data_iterator_);
+	uint16_t data_iterator_ = 0;
+	converted_sequence* temp = convert_timer_sequence(bt, local_buffer, &max_data_length, &data_iterator_);
 	//TODO: if converted_sequence is NULL
-	if (start_read_data)
-	{
-		message = init_data_struct(temp->sequence_[0]);
-	}
+	data_full_msg* message = init_data_struct(temp->sequence_[0]);
 
 	//copying data from sequence 
-	uint16_t sequence_iterator = 0;
+	uint16_t sequence_iterator = 1;
 	for (uint16_t i = message->data_iterator_; i < message->data_length_; i++)
 	{
+		uint8_t tempdata = temp->sequence_[sequence_iterator];
 		message->data_[i] = temp->sequence_[sequence_iterator];
 		message->data_iterator_ = i;
 		sequence_iterator++;
@@ -289,6 +287,7 @@ void read_data_from_buffer(bit_time* bt, data_full_msg* message, TIM_sequence* l
 		}
 	}
 	started = 0;
+	return message;
 }
 
 void remove_second_start_sequence(bit_time* bt, TIM_sequence* local_buffer)

@@ -88,7 +88,7 @@ void copy_intro_start_seq_to_transmit_buffer(uint16_t *output_timer_buffer, bit_
 void copy_to_transmit_buffer(uint16_t* output_timer_buffer,uint8_t *offset,TIM_sequence *message_TIM_seq); //------------
 bit_time init_timings_(uint32_t changed_bitrate, uint32_t timer_freq);  // ok
 uint16_t get_length_of_TIM_sequence(uint8_t *numbers_of_symbols_arr, uint32_t len); // ok
-void read_data_from_buffer(bit_time* bt, data_full_msg* message, TIM_sequence* local_buffer, uint8_t first_reading);   // -------------- ok
+data_full_msg* read_data_from_buffer(bit_time* bt, TIM_sequence* local_buffer, uint8_t first_reading);   // -------------- ok
 void remove_second_start_sequence(bit_time* bt, TIM_sequence* local_buffer);  // ok
 void init_symbols_to_TIM_sequence(symbol_bit_sequence* sym_bit_seq, uint8_t length, bit_time* bt);   // ---------- ok
 converted_sequence* init_converted_sequence(uint8_t len); // ok

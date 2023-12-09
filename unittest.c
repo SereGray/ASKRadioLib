@@ -75,6 +75,7 @@ int main(void)
 
 void setUp(void)
 {
+    starts_from_high_lvl_bit = 0;
     const uint32_t timer_freq = 72000000;
     bt = init_timings_(bitrate_[4], timer_freq);
     max_timer_buffer_length = 24;
@@ -421,7 +422,7 @@ void test_convert_from_buffer_big_buffer(void)
 void test_convert_from_buffer(void)
 {
     max_timer_buffer_length = 35;
-    starts_from_high_lvl_bit = 0;
+    //starts_from_high_lvl_bit = 0;
     bit_time test_bt = init_timings_(bitrate_[0], 72000000);
     uint16_t length = 35;
     uint16_t data_iterator = 0;
@@ -522,7 +523,7 @@ void test_convert_timer_sequence_starts_from_low_lvl(void)
 }
 
 
-void test_convert_timer_sequence_starts_from_hight_lvl(void)
+void test_convert_timer_sequence_starts_from_hight_lvl(void)  // указатель стоял на этой фунцкии
 {
     max_timer_buffer_length = 34;
     bit_time test_bt = init_timings_(bitrate_[0], 72000000);
@@ -540,7 +541,8 @@ void test_convert_timer_sequence_starts_from_hight_lvl(void)
     remove_second_start_sequence(&test_bt, test_sequence); // second part start sequence
     uint16_t convert_sequence_length = 8;
     converted_sequence* res = convert_timer_sequence(&test_bt, test_sequence, &convert_sequence_length, &data_iterator);
-    TEST_ASSERT_EQUAL(res->sequence_[0], (8 << 4) + 1);
+    // 129 35 69 103
+    TEST_ASSERT_EQUAL(res->sequence_[0], (8 << 4) + 1); // 8  + 1 or 011100 + 001110
     TEST_ASSERT_EQUAL(res->sequence_[1], (2 << 4) + 3);
     TEST_ASSERT_EQUAL(res->sequence_[2], (4 << 4) + 5);
     TEST_ASSERT_EQUAL(res->sequence_[3], (6 << 4) + 7);
@@ -579,22 +581,23 @@ void test_read_from_buffer(void)
     uint8_t length = 34;
     uint16_t data_iterator = 0;
     TIM_sequence* test_sequence = init_receive_sequence(length);
-    uint16_t sequence[] = { 3, 3, 3, 3, 1, 3, 2, 2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 2, 3, 2 };
-    //                       0x38,  0x38,   0x23,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
+    // 
+    uint16_t sequence[] = { 3, 3, 3, 3,     1, 3, 2,    2, 3, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 2, 1, 1, 2, 3, 2 };
+    //                       0x38,  0x38,  011100 - 0xe    0x23,  0xe,   0x13,  0x15,         0x16,  0x19,     0x1a,     0x1c
     for (int i = 0; i < 34; i++)
     {
         test_sequence->TIM_ticks_sequence_[i] = sequence[i] * test_bt.TIM_ticks_per_bit_;
     }
     // remove first start sequence
-    test_sequence->sequence_iterator_ = 2;
-    data_full_msg* test_message = init_data_struct(1);
+    //test_sequence->sequence_iterator_ += 2;
     // remove second start sequence
-    read_data_from_buffer(&test_bt, test_message, test_sequence, start_read_data);
-    TEST_ASSERT_EQUAL(test_message->data_[0], (8 << 4) + 1);
-    TEST_ASSERT_EQUAL(test_message->data_[1], (2 << 4) + 3);
-    TEST_ASSERT_EQUAL(test_message->data_[2], (4 << 4) + 5);
-    TEST_ASSERT_EQUAL(test_message->data_[3], (6 << 4) + 7);
-    TEST_ASSERT_EQUAL(started, 0);
+    data_full_msg* test_message = read_data_from_buffer(&test_bt, test_sequence, start_read_data);
+    // 129 35 69 103
+    TEST_ASSERT_EQUAL(test_message->data_[0], (8 << 4) + 1); // 18
+    TEST_ASSERT_EQUAL(test_message->data_[1], (2 << 4) + 3); // 52
+    TEST_ASSERT_EQUAL(test_message->data_[2], (4 << 4) + 5); // 0
+    TEST_ASSERT_EQUAL(test_message->data_[3], (6 << 4) + 7);  // 0
+    TEST_ASSERT_EQUAL(started, 0);  // 1
     delete_receive_sequence(test_sequence);
 }
 
